@@ -1,20 +1,23 @@
 #include "GstPlayer.hpp"
 
+#include "App.hpp"
+#include "SongItem.hpp"
+
 #include <QUrl>
 
 namespace quince {
 
 static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 {
-	//GMainLoop *loop = (GMainLoop*) data;
+	quince::App *app = (quince::App*) data;
 	
 	switch (GST_MESSAGE_TYPE(msg))
 	{
-	case GST_MESSAGE_EOS:
+	case GST_MESSAGE_EOS: {
 		mtl_info("End of stream");
-		//g_main_loop_quit(loop);
+		app->ReachedEndOfStream();
 		break;
-		
+	}
 	case GST_MESSAGE_ERROR: {
 		gchar *debug;
 		GError *error;
@@ -22,7 +25,11 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 		g_free(debug);
 		mtl_warn("Error %s", error->message);
 		g_error_free(error);
-		//g_main_loop_quit(loop);
+		break;
+	}
+	
+	case GST_MESSAGE_ASYNC_DONE: {
+		app->MessageAsyncDone();
 		break;
 	}
 	
@@ -32,11 +39,10 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 	return TRUE;
 }
 
-GstPlayer::GstPlayer(int argc, char *argv[])
+GstPlayer::GstPlayer(quince::App *app, int argc, char *argv[])
+: app_(app)
 {
 	InitGst(argc, argv);
-//	const char *file_path = "file:///home/fox/file.mp3";
-//	Play(file_path);
 }
 
 GstPlayer::~GstPlayer()
@@ -51,16 +57,16 @@ GstPlayer::InitGst(int argc, char *argv[])
 	gst_init(&argc, &argv);
 	play_elem_ = gst_element_factory_make("playbin", "play");
 	GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(play_elem_));
-	gst_bus_add_watch(bus, bus_callback, NULL);// loop_);
+	gst_bus_add_watch(bus, bus_callback, app_);// loop_);
 	gst_object_unref(bus);
 }
 
 void
-GstPlayer::Play(const QString &full_path) {
+GstPlayer::Play(SongItem *song_item)
+{
 	gst_element_set_state(play_elem_, GST_STATE_NULL);
-	QString uri_path = QString("file://") + full_path;
-	QByteArray encoded = QUrl(uri_path).toEncoded();
-	g_object_set(G_OBJECT(play_elem_), "uri", encoded.data(), NULL);
+	auto ba = song_item->uri().toLocal8Bit();
+	g_object_set(G_OBJECT(play_elem_), "uri", ba.data(), NULL);
 	gst_element_set_state(play_elem_, GST_STATE_PLAYING);
 }
 

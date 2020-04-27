@@ -1,6 +1,7 @@
 #pragma once
 
 #include "decl.hxx"
+#include "../decl.hxx"
 #include "../err.hpp"
 #include "../types.hxx"
 
@@ -21,7 +22,7 @@ enum Column {
 class TableModel: public QAbstractTableModel {
 	Q_OBJECT
 public:
-	TableModel(QObject *parent = nullptr);
+	TableModel(App *app, QObject *parent = nullptr);
 	virtual ~TableModel();
 	
 	int
@@ -40,12 +41,14 @@ public:
 	songs() { return songs_; }
 	
 	void
-	UpdateRange(int row1, int row2, Column c);
+	UpdateRange(int row1, Column c1, int row2, Column c2);
 	
 private:
 	
 	void TimerHit();
+	bool UpdatePlayingSongPosition();
 	
+	App *app_ = nullptr;
 	QVector<SongItem*> songs_;
 	QTimer *timer_ = nullptr;
 	mutable int playing_row_ = -1;

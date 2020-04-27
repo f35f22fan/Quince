@@ -1,14 +1,18 @@
 #include "TableModel.hpp"
 
+#include "../App.hpp"
 #include "../Duration.hpp"
-#include "SongItem.hpp"
+#include "../SongItem.hpp"
 
 #include <QFont>
 #include <QTime>
+#include <gst/gst.h>
 
 namespace quince::gui {
 
-TableModel::TableModel(QObject *parent) : QAbstractTableModel(parent)
+TableModel::TableModel(App *app, QObject *parent) :
+app_(app),
+QAbstractTableModel(parent)
 {
 	timer_ = new QTimer(this);
 	timer_->setInterval(1000);
@@ -54,12 +58,16 @@ TableModel::data(const QModelIndex &index, int role) const
 		if (col == Column::Name) {
 			return song->display_name();
 		} else if (col == Column::Duration) {
+			if (song->duration_ns() == -1)
+				return "--";
+			
 			auto d = Duration::FromNs(song->duration_ns());
 			return d.toDurationString();
 		} else if (col == Column::PlayingAt) {
-			if (song->playing()) {
+			if (song->is_playing()) {
 				playing_row_ = row;
-				return QTime::currentTime().toString();
+				auto d = Duration::FromNs(song->playing_at());
+				return d.toDurationString();
 			}
 		}
 		
@@ -73,7 +81,7 @@ TableModel::data(const QModelIndex &index, int role) const
 	} else if (role == Qt::FontRole) {
 		QFont font;
 		
-		if (song->playing())
+		if (song->is_playing())
 			font.setBold(true);
 		
 		return font;
@@ -110,12 +118,61 @@ TableModel::TimerHit()
 	if (playing_row_ >= songs_.size())
 		return;
 	
-	QModelIndex top_left = createIndex(playing_row_, Column::PlayingAt);
-	emit dataChanged(top_left, top_left, {Qt::DisplayRole});
+	bool update_one_column = UpdatePlayingSongPosition();
+	
+	Column c = update_one_column ? Column::PlayingAt : Column::Duration;
+	QModelIndex top_left = createIndex(playing_row_, c);
+	QModelIndex bottom_right = createIndex(playing_row_, Column::PlayingAt);
+	
+	emit dataChanged(top_left, bottom_right, {Qt::DisplayRole});
+}
+
+bool
+TableModel::UpdatePlayingSongPosition()
+{
+	SongItem *song = app_->GetPlayingSong();
+	
+	if (song == nullptr)
+		return true;
+	
+	if (!song->is_playing())
+	{
+		mtl_trace();
+		return true;
+	}
+	
+	GstElement *play_elem = app_->play_elem();
+	i64 duration = -1;
+	gboolean ok = gst_element_query_position (play_elem,
+		GST_FORMAT_TIME, &duration);
+		
+	if (!ok) {
+		mtl_trace();
+		return true;
+	}
+	
+	song->playing_at(duration);
+	
+	if (song->duration_ns() == -1)
+	{
+		duration = -1;
+		gboolean ok = gst_element_query_duration (play_elem,
+			GST_FORMAT_TIME, &duration);
+			
+		if (!ok) {
+			mtl_trace();
+			return false;
+		}
+		song->duration_ns(duration);
+		
+		return false;
+	}
+	
+	return true;
 }
 
 void
-TableModel::UpdateRange(int row1, int row2, Column c)
+TableModel::UpdateRange(int row1, Column c1, int row2, Column c2)
 {
 	int first, last;
 	
@@ -127,8 +184,8 @@ TableModel::UpdateRange(int row1, int row2, Column c)
 		last = row2;
 	}
 	
-	QModelIndex top_left = createIndex(first, c);
-	QModelIndex bottom_right = createIndex(last, c);
+	QModelIndex top_left = createIndex(first, c1);
+	QModelIndex bottom_right = createIndex(last, c2);
 	emit dataChanged(top_left, bottom_right, {Qt::DisplayRole});
 }
 

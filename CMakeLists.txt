@@ -1,3 +1,4 @@
+project(QuincePlayer)
 cmake_minimum_required(VERSION 3.10)
 #set(CMAKE_BUILD_TYPE Debug)
 
@@ -7,8 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Don't use clang because:
 # https://stackoverflow.com/questions/56317596/glm-fails-to-build-when-using-clion
-set(CMAKE_C_COMPILER "/usr/bin/clang-9")
-set(CMAKE_CXX_COMPILER "/usr/bin/clang++-9")
+set(CMAKE_C_COMPILER "/usr/bin/clang")
+set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
 
 # SET (CMAKE_C_COMPILER             "/usr/bin/clang")
 # SET (CMAKE_C_FLAGS                "-Wall -std=c99")
@@ -37,8 +38,12 @@ set(CMAKE_AUTORCC ON)
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(GLIB REQUIRED glib-2.0)
-pkg_check_modules(GST REQUIRED gstreamer-1.0>=1.4 gstreamer-app-1.0>=1.4)
+pkg_check_modules(GST REQUIRED gstreamer-1.0>=1.4
+    gstreamer-plugins-base-1.0 gstreamer-pbutils-1.0)
 include_directories(${GST_INCLUDE_DIRS})
+
+pkg_check_modules(FLAC REQUIRED flac++>=1.3)
+include_directories(${FLAC_INCLUDE_DIRS})
 
 find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
 
@@ -52,16 +57,20 @@ message(STATUS "Qt5Core: " ${Qt5Core_VERSION} ", Gui: "
 
 set(src_files
     actions.hxx
+    audio.cc audio.hh
+    audio/flac.cc audio/flac.hh
+    audio/mp3.cc audio/mp3.hh
     App.cpp App.hpp
     decl.hxx
     Duration.cpp Duration.hpp
     GstPlayer.cpp GstPlayer.hpp
     gui/decl.hxx
-    gui/SongItem.cpp gui/SongItem.hpp
+    gui/SliderPane.cpp gui/SliderPane.hpp
     gui/Table.cpp gui/Table.hpp
     gui/TableModel.cpp gui/TableModel.hpp
     io/io.cc io/io.hh io/io.hxx
     main.cpp err.hpp
+    SongItem.cpp SongItem.hpp
     types.hxx)
 
 foreach(f IN LISTS src_files)
@@ -75,6 +84,6 @@ set(exe_name "app")
 
 add_executable(${exe_name} ${src_files} resources.qrc)
 target_link_libraries(${exe_name} Qt5::Core Qt5::Gui Qt5::Widgets ${dl_lib}
-    ${GST_LIBRARIES} rt ${GST_CFLAGS})
+    ${GST_LIBRARIES} rt ${GST_CFLAGS} ${FLAC_LIBRARIES} ${FLAC_CFLAGS})
 # rt for clock_monotonic_raw
 

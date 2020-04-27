@@ -1,7 +1,7 @@
 #pragma once
 
 namespace quince::gui {
-class SongItem;
+class SliderPane;
 class Table;
 class TableModel;
 }

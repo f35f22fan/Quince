@@ -1,6 +1,8 @@
 #pragma once
 
+#include "decl.hxx"
 #include "err.hpp"
+#include "gui/decl.hxx"
 #include "types.hxx"
 
 #include <QString>
@@ -10,11 +12,14 @@ namespace quince {
 
 class GstPlayer {
 public:
-	GstPlayer(int argc, char *argv[]);
+	GstPlayer(quince::App *app, int argc, char *argv[]);
 	virtual ~GstPlayer();
 	
 	void
-	Play(const QString &full_path);
+	Play(SongItem *song_item);
+	
+	GstElement*
+	play_elem() const { return play_elem_; }
 	
 private:
 	NO_ASSIGN_COPY_MOVE(GstPlayer);
@@ -23,6 +28,7 @@ private:
 	InitGst(int argc, char *argv[]);
 	
 	GstElement *play_elem_ = nullptr;
+	quince::App *app_ = nullptr;
 	
 };
 }
