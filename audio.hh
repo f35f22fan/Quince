@@ -1,13 +1,39 @@
 #pragma once
 
 #include <gst/gst.h>
+#include <iostream>
+#include <fstream>
 
+#include "audio.hxx"
+#include "audio/decl.hxx"
 #include "types.hxx"
 
 namespace quince::audio {
 
 void
 PrintBitsUchar(const char *comment, const uchar c);
+
+bool
+ReadFileDurationFlac(const char *full_path, Meta &meta);
+
+bool
+ReadFileDurationMp3(const char *full_path, Meta &meta);
+
+bool
+ReadFileDurationOggOpus(const char *full_path, Meta &meta);
+
+bool
+ReadFileMeta(const char *full_path, Meta &meta);
+
+//How much room does ID3 version 1 tag info
+//take up at the end of this file (if any)?
+i32
+ReadID3V1Size(std::ifstream& infile);
+
+//how much room does ID3 version 2 tag info
+//take up at the beginning of this file (if any)
+i32
+ReadID3V2Size(std::ifstream& infile);
 
 //Intel processors are little-endian;
 //search Google or see: http://en.wikipedia.org/wiki/Endian

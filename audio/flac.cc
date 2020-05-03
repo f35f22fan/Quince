@@ -9,16 +9,8 @@
 
 namespace quince::audio::flac {
 
-void
-PrintBitsUchar(const char *comment, const uchar c)
-{
-	printf("%s%d%d%d%d%d%d%d%d\n", comment, 
-		c & 0x80 ? 1:0, c & 0x40 ? 1:0, c & 0x20 ? 1:0, c & 0x10 ? 1:0,
-		c & 0x08 ? 1:0, c & 0x04 ? 1:0, c & 0x02 ? 1:0, c & 0x01 ? 1:0);
-}
-
 bool
-ReadFileDuration(const char *full_path, i32 &duration)
+ReadFileDuration(const char *full_path, i64 &duration_ns)
 {
 	std::ifstream infile(full_path, std::ios::binary);
 	
@@ -73,14 +65,14 @@ ReadFileDuration(const char *full_path, i32 &duration)
 	const int samples_off_bytes = samples_off_bits / 8;
 	const i32 shift = samples_off_bits % 8;
 	
-	u64 total_samples = 0;
+	i64 total_samples = 0;
 	
 	for (int i = 0; i < 5; i++)
 	{
 		total_samples <<= 8;
 		const int index = samples_off_bytes + i;
 		uchar c = meta_block[index];
-		total_samples |= u64(c);
+		total_samples |= i64(c);
 	}
 	
 	total_samples <<= shift;
@@ -88,7 +80,10 @@ ReadFileDuration(const char *full_path, i32 &duration)
 	total_samples &= 0x0000000FFFFFFFFF;
 	//mtl_info("total_samples: %lu", total_samples);
 
-	duration = total_samples / sample_rate;
+	const i64 to_ns = 1000000000L;
+	duration_ns = total_samples * to_ns / i64(sample_rate);
+	
+	//mtl_info("ld: %ld", duration_ns);
 	
 	return true;
 }

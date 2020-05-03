@@ -25,6 +25,6 @@ i32
 ReadID3V2Size(std::ifstream& infile);
 
 bool
-ReadFileDuration(const char *full_path, i32 &duration);
+ReadFileDuration(const char *full_path, i64 &duration_ns);
 
 }

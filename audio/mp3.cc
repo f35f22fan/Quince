@@ -53,7 +53,7 @@ ReadID3V2Size(std::ifstream& infile)
 }
 
 bool
-ReadFileDuration(const char *full_path, i32 &duration)
+ReadFileDuration(const char *full_path, i64 &duration_ns)
 {
 	std::ifstream infile(full_path, std::ios::binary);
 	
@@ -99,8 +99,8 @@ ReadFileDuration(const char *full_path, i32 &duration)
 	
 	//mtl_info("bitrate %d/%d", bitrate, bitrate / 8);
 	
-	// calc duration in seconds
-	duration = (data_end - data_begin) / (bitrate / 8);
+	const i64 to_ns = 1000000000L;
+	duration_ns = i64(data_end - data_begin) * to_ns / i64(bitrate / 8);
 	
 	return true;
 }

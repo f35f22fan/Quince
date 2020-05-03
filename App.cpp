@@ -4,6 +4,7 @@
 #include "audio.hh"
 #include "audio/flac.hh"
 #include "audio/mp3.hh"
+#include "audio/ogg.hh"
 #include "Duration.hpp"
 #include "GstPlayer.hpp"
 #include "gui/SliderPane.hpp"
@@ -228,17 +229,11 @@ App::AddBatch(QVector<quince::SongItem*> &vec)
 		QUrl url(song->uri());
 		QByteArray full_path_ba = url.toLocalFile().toLocal8Bit();
 		const char *full_path = full_path_ba.data();
-		i32 seconds = -1;
+		audio::Meta &meta = song->meta();
 		
-		if (song->is_mp3())
-			audio::mp3::ReadFileDuration(full_path, seconds);
-		else if (song->is_flac())
-			audio::flac::ReadFileDuration(full_path, seconds);
+		audio::ReadFileMeta(full_path, meta);
 		
-		if (seconds != -1)
-			song->duration_seconds(seconds);
-		
-		if (song->duration_ns() != -1)
+		if (song->meta().duration() != -1)
 			continue;
 		
 		if (!started) {
@@ -352,7 +347,7 @@ App::GotAudioInfo(AudioInfo *info)
 	for (quince::SongItem *song: *songs)
 	{
 		if (song->uri() == info->uri) {
-			song->duration_ns(info->duration);
+			song->meta().duration(info->duration);
 			break;
 		}
 	}
@@ -438,7 +433,7 @@ App::MessageAsyncDone()
 	
 	mtl_info("State is: %s", audio::StateToString(state));
 	
-	if (song->duration_ns() == -1)
+	if (!song->meta().is_duration_set())
 	{
 		i64 duration = -1;
 		gboolean ok = gst_element_query_duration (play_elem(),
@@ -449,7 +444,7 @@ App::MessageAsyncDone()
 			return;
 		}
 		
-		song->duration_ns(duration);
+		song->meta().duration(duration);
 		mtl_info("DURATION IS: %ld", duration);
 	}
 }

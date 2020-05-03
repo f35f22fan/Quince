@@ -45,6 +45,9 @@ include_directories(${GST_INCLUDE_DIRS})
 pkg_check_modules(FLAC REQUIRED flac++>=1.3)
 include_directories(${FLAC_INCLUDE_DIRS})
 
+pkg_check_modules(OPUSFILE REQUIRED opusfile)
+include_directories(${OPUSFILE_INCLUDE_DIRS})
+
 find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
 
 foreach(path ${CMAKE_PREFIX_PATH})
@@ -57,9 +60,12 @@ message(STATUS "Qt5Core: " ${Qt5Core_VERSION} ", Gui: "
 
 set(src_files
     actions.hxx
-    audio.cc audio.hh
-    audio/flac.cc audio/flac.hh
-    audio/mp3.cc audio/mp3.hh
+    audio.cc audio.hh audio.hxx
+    audio/decl.hxx
+    audio/Meta.cpp audio/Meta.hpp
+#    audio/flac.cc audio/flac.hh
+#    audio/mp3.cc audio/mp3.hh
+#    audio/ogg.cc audio/ogg.hh
     App.cpp App.hpp
     decl.hxx
     Duration.cpp Duration.hpp
@@ -84,6 +90,7 @@ set(exe_name "app")
 
 add_executable(${exe_name} ${src_files} resources.qrc)
 target_link_libraries(${exe_name} Qt5::Core Qt5::Gui Qt5::Widgets ${dl_lib}
-    ${GST_LIBRARIES} rt ${GST_CFLAGS} ${FLAC_LIBRARIES} ${FLAC_CFLAGS})
+    ${GST_LIBRARIES} rt ${GST_CFLAGS} ${FLAC_LIBRARIES} ${FLAC_CFLAGS}
+    ${OPUSFILE_LIBRARIES} ${OPUSFILE_CFLAGS})
 # rt for clock_monotonic_raw
 

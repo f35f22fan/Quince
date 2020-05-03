@@ -1,6 +1,7 @@
 #include "TableModel.hpp"
 
 #include "../App.hpp"
+#include "../audio/Meta.hpp"
 #include "../Duration.hpp"
 #include "../SongItem.hpp"
 
@@ -58,10 +59,10 @@ TableModel::data(const QModelIndex &index, int role) const
 		if (col == Column::Name) {
 			return song->display_name();
 		} else if (col == Column::Duration) {
-			if (song->duration_ns() == -1)
+			if (!song->meta().is_duration_set())
 				return "--";
 			
-			auto d = Duration::FromNs(song->duration_ns());
+			auto d = Duration::FromNs(song->meta().duration());
 			return d.toDurationString();
 		} else if (col == Column::PlayingAt) {
 			if (song->is_playing()) {
@@ -153,7 +154,7 @@ TableModel::UpdatePlayingSongPosition()
 	
 	song->playing_at(duration);
 	
-	if (song->duration_ns() == -1)
+	if (!song->meta().is_duration_set())
 	{
 		duration = -1;
 		gboolean ok = gst_element_query_duration (play_elem,
@@ -163,7 +164,7 @@ TableModel::UpdatePlayingSongPosition()
 			mtl_trace();
 			return false;
 		}
-		song->duration_ns(duration);
+		song->meta().duration(duration);
 		
 		return false;
 	}
