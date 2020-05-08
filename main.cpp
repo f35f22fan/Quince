@@ -3,8 +3,6 @@
 
 #include "App.hpp"
 
-#include "audio/ogg.hh"
-
 int
 main(int argc, char *argv[])
 {
@@ -29,7 +27,6 @@ main(int argc, char *argv[])
 	*/
 	quince::App app(argc, argv);
 	app.setWindowTitle("Quince");
-	app.resize(800, 600);
 	app.show();
 	
 	return qapp.exec();

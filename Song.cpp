@@ -1,13 +1,13 @@
-#include "SongItem.hpp"
+#include "Song.hpp"
 
 #include <QUrl>
 
 namespace quince {
 
-SongItem*
-SongItem::FromFile(const io::File &file, const QString &dir_path)
+Song*
+Song::FromFile(const io::File &file, const QString &dir_path)
 {
-	auto *p = new SongItem();
+	auto *p = new Song();
 	p->dispay_name(file.name);
 	
 	audio::Codec audio_codec = audio::Codec::Unknown;

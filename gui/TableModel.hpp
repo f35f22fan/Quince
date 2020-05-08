@@ -16,6 +16,11 @@ enum Column {
 	Name = 0,
 	Duration,
 	PlayingAt,
+	Bitrate,
+	Channels,
+	BitsPerSample,
+	SampleRate,
+	Genre,
 	Count
 };
 
@@ -37,7 +42,7 @@ public:
 	QVariant
 	headerData(int section, Qt::Orientation orientation, int role) const override;
 	
-	QVector<SongItem*>&
+	QVector<Song*>&
 	songs() { return songs_; }
 	
 	void
@@ -49,7 +54,7 @@ private:
 	bool UpdatePlayingSongPosition();
 	
 	App *app_ = nullptr;
-	QVector<SongItem*> songs_;
+	QVector<Song*> songs_;
 	QTimer *timer_ = nullptr;
 	mutable int playing_row_ = -1;
 };

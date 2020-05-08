@@ -36,11 +36,28 @@ public:
 	
 	bool
 	is_duration_set() const { return duration_ != -1; }
+	
+	i8 bits_per_sample() const { return bits_per_sample_; }
+	void bits_per_sample(i8 n) { bits_per_sample_ = n; }
+	
+	i8 channels() const { return channels_; }
+	void channels(i8 n) { channels_ = n; }
+	
+	Genre genre() const { return genre_; }
+	void genre(Genre g) { genre_ = g; }
+	
+	i32 sample_rate() const { return sample_rate_; }
+	void sample_rate(i32 n) { sample_rate_ = n; }
+	
 private:
 	
+	i8 channels_ = -1;
+	i8 bits_per_sample_ = -1;
+	i32 sample_rate_ = -1;
 	i64 duration_ = -1;
 	i32 bitrate_ = -1;
 	Codec audio_codec_ = Codec::Unknown;
+	Genre genre_ = Genre::None;
 };
 
 }

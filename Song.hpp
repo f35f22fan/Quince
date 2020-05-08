@@ -10,7 +10,7 @@
 
 namespace quince {
 
-class SongItem {
+class Song {
 public:
 	
 	const QString& display_name() const { return display_name_; }
@@ -25,7 +25,7 @@ public:
 	void
 	uri(const QString &s) { uri_ = s; }
 	
-	static SongItem*
+	static Song*
 	FromFile(const io::File &file, const QString &dir_path);
 	
 	bool

@@ -5,8 +5,86 @@
 
 #include <cstdlib>
 #include <opusfile.h>
+#include <QFileInfo>
 
 namespace quince::audio {
+
+const char*
+GenreToString(const Genre g)
+{
+	if (g == Genre::None)
+		return "";
+	
+	return GenreStringArray[int(g)];
+}
+
+MpegVersion
+GetMpegVersion(const int header)
+{
+	const i32 n = (header >> 19) & 0x3;
+	
+	switch (n)
+	{
+	case 0: return MpegVersion::_2_5;
+	case 1: return MpegVersion::Reserved;
+	case 2: return MpegVersion::_2;
+	case 3: return MpegVersion::_1;
+	default: return MpegVersion::None;
+	}
+}
+
+MpegLayer
+GetMpegLayer(const int header)
+{
+	const int n = (header >> 17) & 0x3;
+	
+	switch(n)
+	{
+	case 0: return MpegLayer::Reserved;
+	case 1: return MpegLayer::_3;
+	case 2: return MpegLayer::_2;
+	case 3: return MpegLayer::_1;
+	default: return MpegLayer::None;
+	}
+}
+
+i32
+GetMpegSampleRate(const int header, const MpegVersion v)
+{
+	const int n = (header >> 10) & 0x3;
+	int div = 1;
+	
+	if (v == MpegVersion::_2)
+		div = 2;
+	else if (v == MpegVersion::_2_5)
+		div = 4;
+	else if (v == MpegVersion::Reserved)
+		return -1;
+	
+	switch (n)
+	{
+	case 0: return 44100 / div;
+	case 1: return 48000 / div;
+	case 2: return 32000 / div;
+	default: return -1;
+	}
+}
+
+i8
+GetMpegChannels(const int header)
+{
+	const int n = (header >> 6) & 0x3;
+	
+	switch (n)
+	{
+	case 0: return 2; // Stereo
+	case 1: return 2; // Joint Stereo
+	case 2: return 2; // Dual Channel Stereo
+	case 3: return 1; // Mono
+	}
+	
+	return -1;
+}
 
 void
 PrintBitsUchar(const char *comment, const uchar c)
@@ -17,21 +95,38 @@ PrintBitsUchar(const char *comment, const uchar c)
 }
 
 i32
-ReadID3V1Size(std::ifstream& infile)
+ReadID3V1Size(std::ifstream& infile, Meta *meta)
 {
 	std::streampos saved_pos = infile.tellg(); 
 	
 	//get to 128 bytes from file end
 	infile.seekg(0, std::ios::end);
-	std::streampos length = infile.tellg() - (std::streampos)128;
+	std::streampos length = infile.tellg() - std::streampos(128);
 	infile.seekg(length);
 	
 	i32 size = -1;
-	char buffer[3] = {0};
-	infile.read(buffer, 3);
+	char buf[128] = {0};
+	infile.read(buf, 128);
 	
-	if( buffer[0] == 'T' && buffer[1] == 'A' && buffer[2] == 'G' )
+	if(buf[0] == 'T' && buf[1] == 'A' && buf[2] == 'G')
+	{
 		size = 128; //found tag data
+		
+		if (meta != nullptr)
+		{
+//			QFileInfo fi(name);
+//			QByteArray ba = fi.fileName().toLocal8Bit();
+			u8 n = buf[127];
+			//mtl_info("%s [%u]", ba.data(), n);
+			
+			if (i16(n) > i16(Genre::MaxEnumValue)) {
+				//mtl_info("[MAX]: %u", n);
+				meta->genre(Genre::None);
+			} else {
+				meta->genre(Genre(i16(n)));
+			}
+		}
+	}
 	
 	infile.seekg(saved_pos);
 	
@@ -44,10 +139,10 @@ ReadID3V2Size(std::ifstream& infile)
 	std::streampos saved_pos = infile.tellg(); 
 	infile.seekg(0, std::ios::beg);
 	
-	char buffer[6] = {0};
-	infile.read(buffer, 6);
+	char buf[6] = {0};
+	infile.read(buf, 6);
 	
-	if(buffer[0] != 'I' || buffer[1] != 'D' || buffer[2] != '3')
+	if(buf[0] != 'I' || buf[1] != 'D' || buf[2] != '3')
 	{
 		// No tag data
 		infile.seekg(saved_pos);
@@ -55,11 +150,11 @@ ReadID3V2Size(std::ifstream& infile)
 	}
 	
 	i32 size = 0;
-	infile.read(reinterpret_cast<char*>(&size), sizeof(size));
+	infile.read(reinterpret_cast<char*>(&size), sizeof size);
 	size = syncsafe(size);
 	infile.seekg(saved_pos);
 	
-	// 10 => 10 bytes of ID3v2 header
+	// + 10 bytes of ID3v2 header
 	return size + 10;
 }
 
@@ -94,40 +189,50 @@ ReadFileDurationMp3(const char *full_path, Meta &meta)
 	// Get start & end of primary frame data (don't confuse with ID3 tags)
 	infile.seekg(0, std::ios::end);
 	std::streampos data_end = infile.tellg();
-	
 	infile.seekg(0, std::ios::beg);
-	std::streampos data_begin = 0;
 	
-	const i32 v1 = ReadID3V1Size(infile);
-	const i32 v2 = ReadID3V2Size(infile);
+	const i32 v1_size = ReadID3V1Size(infile, &meta);
+	const i32 v2_size = ReadID3V2Size(infile);
 	
-	if (v1 == -1 || v2 == -1) {
-		mtl_warn("v1 or v2 equals -1");
+	if (v1_size == -1 || v2_size == -1) {
+		mtl_warn("ID3v 1 or 2 not present");
 		infile.close();
 		return false;
 	}
 	
-	data_end -= v1;
-	data_begin += v2;
-	
+	data_end -= v1_size;
+	std::streampos data_begin = v2_size;
 	infile.seekg(data_begin, std::ios::beg);
 	
-	//determine bitrate based on header for first frame of audio data
-	i32 header_bytes = 0;
-	infile.read(reinterpret_cast<char*>(&header_bytes), sizeof(header_bytes));
+	i32 header = 0;
+	infile.read(reinterpret_cast<char*>(&header), sizeof header);
 	infile.close();
+	header = reverse(header);
+	const MpegVersion mpeg_version = GetMpegVersion(header);
 	
-	header_bytes = reverse(header_bytes);
-	const i32 index = i32((header_bytes >> 12) & 0xF);
+	if (mpeg_version != MpegVersion::_1 ||
+		GetMpegLayer(header) != MpegLayer::_3)
+	{
+		mtl_trace();
+		return false;
+	}
 	
-	if (index < 0 | index > BitrateCount)
+	i32 sample_rate = GetMpegSampleRate(header, mpeg_version);
+	meta.sample_rate(sample_rate);
+	meta.channels(GetMpegChannels(header));
+	
+	// determine bitrate based on header for first frame of audio data
+	const i32 index = i32((header >> 12) & 0xF);
+	
+	if (index < 0 | index > Mp3BitrateArrayLen)
 		return false;
 	
-	i32 bitrate = bitrates[index];
+	i32 bitrate = Mp3Bitrates[index];
 	meta.bitrate(bitrate);
 	
 	const i64 to_ns = 1000000000L;
-	i64 n = i64(data_end - data_begin) * to_ns / i64(bitrate / 8);
+	i64 bitrate_in_bytes = bitrate / 8;
+	i64 n = i64(data_end - data_begin) * to_ns / bitrate_in_bytes;
 	meta.duration(n);
 	
 	return true;
@@ -164,32 +269,36 @@ ReadFileDurationFlac(const char *full_path, Meta &meta)
 	infile.close();
 	
 	const i32 off_bits = 16 + 16 + 24 + 24;
-	const i32 offset_bytes = off_bits / 8;
+	const i32 sample_rate_offset = off_bits / 8;
 	
 	u32 sample_rate = 0;
 	
 	for (int i = 0; i < 3; i++)
 	{
 		sample_rate <<= 8;
-		const int index = offset_bytes + i;
+		const int index = sample_rate_offset + i;
 		uchar c = meta_block[index];
 		sample_rate |= u32(c);
 	}
 	
 	sample_rate >>= 4;
-	//mtl_info("Sample rate: %d", sample_rate);
+	meta.sample_rate(sample_rate);
 	
-	uchar num_channels = 0;
-	const i32 num_channels_byte_offset = offset_bytes + 2;
-	num_channels = meta_block[num_channels_byte_offset];
-	num_channels &= 0x7;
-	//mtl_info("Num channels: %u", num_channels);
+	const i32 num_channels_offset = sample_rate_offset + 2;
+	const u8 bits_4_3_1 = meta_block[num_channels_offset];
+	u8 num_channels = ((bits_4_3_1 & 0xE) >> 1) + 1;
+	meta.channels(num_channels);
+	
+	u8 bits_per_sample = (bits_4_3_1 & 0x1) << 4;
+	u8 bits_4_x = meta_block[num_channels_offset + 1];
+	bits_per_sample |= (bits_4_x >> 4) + 1;
+	meta.bits_per_sample(bits_per_sample);
 	
 	const i32 samples_off_bits = off_bits + 20 + 8;
 	const int samples_off_bytes = samples_off_bits / 8;
 	const i32 shift = samples_off_bits % 8;
 	
-	i64 total_samples = 0;
+	i64 total_samples = 0; // total samples in stream
 	
 	for (int i = 0; i < 5; i++)
 	{
@@ -202,8 +311,13 @@ ReadFileDurationFlac(const char *full_path, Meta &meta)
 	total_samples <<= shift;
 	total_samples >>= shift;
 	total_samples &= 0x0000000FFFFFFFFF;
-	//mtl_info("total_samples: %lu", total_samples);
-
+	
+	// Compute bitrate:
+	// 44,100 samples per second × 16 bits per sample × 2 channels
+	// = 1,411,200 bits per second (or 1,411.2 kbps)
+	const i32 bitrate = sample_rate * bits_per_sample * num_channels;
+	meta.bitrate(bitrate);
+	
 	const i64 to_ns = 1000000000L;
 	i64 n = total_samples * to_ns / i64(sample_rate);
 	meta.duration(n);
@@ -214,7 +328,6 @@ ReadFileDurationFlac(const char *full_path, Meta &meta)
 bool
 ReadFileDurationOggOpus(const char *full_path, Meta &meta)
 {
-	
 	int error;
 	OggOpusFile *opus_file = op_open_file(full_path, &error);
 	
@@ -241,8 +354,10 @@ ReadFileDurationOggOpus(const char *full_path, Meta &meta)
 		return false;
 	}
 	
-	i32 sample_rate = opus_head->input_sample_rate;
-	//mtl_info("Sample rate: %d", sample_rate);
+	meta.sample_rate(opus_head->input_sample_rate);
+	meta.channels(opus_head->channel_count);
+//	i32 bits_per_sample = bitrate / (meta.sample_rate() * meta.channels());
+//	mtl_info("bits_per_sample: %d", bits_per_sample);
 	
 	const i64 pcm = op_pcm_total(opus_file, -1);
 	op_free(opus_file);

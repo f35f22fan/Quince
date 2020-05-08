@@ -10,6 +10,9 @@
 
 namespace quince::audio {
 
+const char*
+GenreToString(const Genre g);
+
 void
 PrintBitsUchar(const char *comment, const uchar c);
 
@@ -28,7 +31,7 @@ ReadFileMeta(const char *full_path, Meta &meta);
 //How much room does ID3 version 1 tag info
 //take up at the end of this file (if any)?
 i32
-ReadID3V1Size(std::ifstream& infile);
+ReadID3V1Size(std::ifstream& infile, Meta *meta);
 
 //how much room does ID3 version 2 tag info
 //take up at the beginning of this file (if any)

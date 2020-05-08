@@ -23,6 +23,10 @@ Table::Create(QAbstractTableModel *tm)
 	p->setColumnWidth(Column::Name, 500);
 	p->setColumnWidth(Column::Duration, 120);
 	p->setColumnWidth(Column::PlayingAt, 120);
+	p->setColumnWidth(Column::Bitrate, 120);
+	p->setColumnWidth(Column::BitsPerSample, 120);
+	p->setColumnWidth(Column::Channels, 120);
+	p->setColumnWidth(Column::SampleRate, 120);
 	
 	return p;
 }

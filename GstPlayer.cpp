@@ -1,7 +1,7 @@
 #include "GstPlayer.hpp"
 
 #include "App.hpp"
-#include "SongItem.hpp"
+#include "Song.hpp"
 
 #include <QUrl>
 
@@ -62,7 +62,7 @@ GstPlayer::InitGst(int argc, char *argv[])
 }
 
 void
-GstPlayer::Play(SongItem *song_item)
+GstPlayer::Play(Song *song_item)
 {
 	gst_element_set_state(play_elem_, GST_STATE_NULL);
 	auto ba = song_item->uri().toLocal8Bit();

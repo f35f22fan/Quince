@@ -145,12 +145,15 @@ Duration::toDurationString() const
 	QString str;
 	
 	if (days_ > 0)
-		str.append(QString::number(days_) + "d ");
+		str.append(QString::number(days_) + QLatin1String("d "));
 	
-	if (hours_ < 10)
-		str.append('0');
-	
-	str.append(QString::number(hours_) + ':');
+	if (hours_ > 0)
+	{
+		if (hours_ < 10)
+			str.append('0');
+		
+		str.append(QString::number(hours_) + ':');
+	}
 	
 	if (minutes_ < 10)
 		str.append('0');

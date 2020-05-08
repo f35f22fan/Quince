@@ -2,16 +2,13 @@
 
 #include "actions.hxx"
 #include "audio.hh"
-#include "audio/flac.hh"
-#include "audio/mp3.hh"
-#include "audio/ogg.hh"
 #include "Duration.hpp"
 #include "GstPlayer.hpp"
 #include "gui/SliderPane.hpp"
 #include "gui/Table.hpp"
 #include "gui/TableModel.hpp"
 #include "io/io.hh"
-#include "SongItem.hpp"
+#include "Song.hpp"
 
 #include <QBoxLayout>
 #include <QScrollArea>
@@ -207,6 +204,7 @@ App::App(int argc, char *argv[])
 	CHECK_TRUE_RET_VOID(LoadSavedSongData());
 	CHECK_TRUE_RET_VOID(CreateGui());
 	setWindowIcon(QIcon(":/resources/Quince.png"));
+	resize(1400, 600);
 }
 
 App::~App() {
@@ -220,11 +218,11 @@ App::~App() {
 }
 
 bool
-App::AddBatch(QVector<quince::SongItem*> &vec)
+App::AddBatch(QVector<quince::Song*> &vec)
 {
 	bool started = false;
 
-	for (quince::SongItem *song: vec)
+	for (quince::Song *song: vec)
 	{
 		QUrl url(song->uri());
 		QByteArray full_path_ba = url.toLocalFile().toLocal8Bit();
@@ -319,10 +317,10 @@ App::CreatePlaylistActionsToolBar()
 	return tb;
 }
 
-QVector<SongItem*>*
+QVector<Song*>*
 App::current_playlist_songs() { return &table_model_->songs(); }
 
-SongItem*
+Song*
 App::GetPlayingSong()
 {
 	for (auto *song: table_model_->songs())
@@ -344,7 +342,7 @@ App::GotAudioInfo(AudioInfo *info)
 	auto *songs = current_playlist_songs();
 	CHECK_PTR_RET_VOID(songs);
 	
-	for (quince::SongItem *song: *songs)
+	for (quince::Song *song: *songs)
 	{
 		if (song->uri() == info->uri) {
 			song->meta().duration(info->duration);
@@ -382,7 +380,7 @@ App::LoadSavedSongData()
 	if (table_model_ == nullptr)
 		table_model_ = new gui::TableModel(this);
 	
-	QVector<SongItem*> *songs = current_playlist_songs();
+	QVector<Song*> *songs = current_playlist_songs();
 	CHECK_PTR(songs);
 	
 	const i64 sec = 1000'000'000L;
@@ -391,8 +389,11 @@ App::LoadSavedSongData()
 	const i64 day = hour * 24L;
 	
 	QVector<io::File> files;
-	//QString dir_path = "/media/data/Audio/0 Best Hits/";
-	QString dir_path = "/media/data/Audio/0 Chillout/Psydub/Phaeleh - (2010) Fallen Light [Afterglo, AFTRCD1001]/";
+	const QString mp3_dir_path = "/media/data/Audio/0 Best Hits/";
+	const QString flac_dir_path = "/media/data/Audio/0 Chillout/Psydub/Phaeleh - (2010) Fallen Light [Afterglo, AFTRCD1001]/";
+	const QString opus_dir_path = "/media/data/Audio/0 Chillout/Psy Chillout/Solar Fields - Movements (Remastered) 2018 FLAC-WEB/";
+	
+	QString dir_path = mp3_dir_path;
 	
 	if (!dir_path.endsWith('/'))
 		dir_path.append('/');
@@ -404,7 +405,7 @@ App::LoadSavedSongData()
 	
 	for (io::File &file: files)
 	{
-		auto *song = SongItem::FromFile(file, dir_path);
+		auto *song = Song::FromFile(file, dir_path);
 		songs->append(song);
 	}
 	
@@ -414,7 +415,7 @@ App::LoadSavedSongData()
 void
 App::MessageAsyncDone()
 {
-	SongItem *song = GetPlayingSong();
+	Song *song = GetPlayingSong();
 	
 	if (song == nullptr) {
 		mtl_trace();
@@ -477,7 +478,7 @@ App::PlaylistDoubleClicked(QModelIndex index)
 		}
 	}
 	
-	SongItem *song = songs[row];
+	Song *song = songs[row];
 	player_->Play(song);
 	song->playing_at(0);
 	table_model_->UpdateRange(row, gui::Column::Name, last_playing, gui::Column::PlayingAt);

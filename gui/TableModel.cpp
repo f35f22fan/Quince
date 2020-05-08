@@ -1,9 +1,10 @@
 #include "TableModel.hpp"
 
 #include "../App.hpp"
+#include "../audio.hh"
 #include "../audio/Meta.hpp"
 #include "../Duration.hpp"
-#include "../SongItem.hpp"
+#include "../Song.hpp"
 
 #include <QFont>
 #include <QTime>
@@ -53,13 +54,14 @@ TableModel::data(const QModelIndex &index, int role) const
 	}
 	
 	auto *song = songs_[row];
+	audio::Meta &meta = song->meta();
 	
 	if (role == Qt::DisplayRole)
 	{
 		if (col == Column::Name) {
 			return song->display_name();
 		} else if (col == Column::Duration) {
-			if (!song->meta().is_duration_set())
+			if (!meta.is_duration_set())
 				return "--";
 			
 			auto d = Duration::FromNs(song->meta().duration());
@@ -70,6 +72,25 @@ TableModel::data(const QModelIndex &index, int role) const
 				auto d = Duration::FromNs(song->playing_at());
 				return d.toDurationString();
 			}
+		} else if (col == Column::Bitrate) {
+			const i32 bitrate = meta.bitrate();
+			
+			if (bitrate != -1) {
+				return QString::number(bitrate / 1000)
+					+ QLatin1String(" kbps");
+			}
+		} else if (col == Column::Channels) {
+			if (meta.channels() != -1)
+				return QString::number(meta.channels());
+		} else if (col == Column::BitsPerSample) {
+			if (meta.bits_per_sample() != -1)
+				return QString::number(meta.bits_per_sample());
+		} else if (col == Column::SampleRate) {
+			if (meta.sample_rate() != -1) {
+				return QString::number(meta.sample_rate());
+			}
+		} else if (col == Column::Genre) {
+			return audio::GenreToString(meta.genre());
 		}
 		
 		return QVariant();
@@ -100,11 +121,21 @@ TableModel::headerData(int section, Qt::Orientation orientation, int role) const
 		{
 			switch (section) {
 			case Column::Name:
-				return QString("Name");
+				return QLatin1String("Name");
 			case Column::Duration:
-				return QString("Duration");
+				return QLatin1String("Duration");
 			case Column::PlayingAt:
-				return QString("Playing At");
+				return QLatin1String("Playing At");
+			case Column::Bitrate:
+				return QLatin1String("Bitrate");
+			case Column::Channels:
+				return QLatin1String("Channels");
+			case Column::BitsPerSample:
+				return QLatin1String("Bits Per Sample");
+			case Column::SampleRate:
+				return QLatin1String("Sample Rate");
+			case Column::Genre:
+				return QLatin1String("Genre");
 			}
 		} else {
 			return QString::number(section + 1);
@@ -131,7 +162,7 @@ TableModel::TimerHit()
 bool
 TableModel::UpdatePlayingSongPosition()
 {
-	SongItem *song = app_->GetPlayingSong();
+	Song *song = app_->GetPlayingSong();
 	
 	if (song == nullptr)
 		return true;

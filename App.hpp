@@ -31,15 +31,15 @@ public:
 	virtual ~App();
 	
 	bool
-	AddBatch(QVector<quince::SongItem*> &vec);
+	AddBatch(QVector<quince::Song*> &vec);
 	
-	QVector<SongItem*>*
+	QVector<Song*>*
 	current_playlist_songs();
 	
 	void
 	GotAudioInfo(AudioInfo *info);
 	
-	SongItem*
+	Song*
 	GetPlayingSong();
 	
 	bool

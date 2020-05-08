@@ -16,7 +16,7 @@ public:
 	virtual ~GstPlayer();
 	
 	void
-	Play(SongItem *song_item);
+	Play(Song *song_item);
 	
 	GstElement*
 	play_elem() const { return play_elem_; }

@@ -76,7 +76,7 @@ set(src_files
     gui/TableModel.cpp gui/TableModel.hpp
     io/io.cc io/io.hh io/io.hxx
     main.cpp err.hpp
-    SongItem.cpp SongItem.hpp
+    Song.cpp Song.hpp
     types.hxx)
 
 foreach(f IN LISTS src_files)
