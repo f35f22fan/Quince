@@ -56,4 +56,8 @@ syncsafe(i32 i);
 const char*
 StateToString(const GstState state);
 
+void
+timespec_diff(struct timespec *start, struct timespec *stop,
+	struct timespec *result);
+
 }

@@ -40,7 +40,7 @@ public:
 	GotAudioInfo(AudioInfo *info);
 	
 	Song*
-	GetPlayingSong();
+	GetCurrentSong(int *index = nullptr);
 	
 	bool
 	InitDiscoverer();
@@ -54,12 +54,26 @@ public:
 	GstElement*
 	play_elem() const;
 	
+	GstPlayer*
+	player() const { return player_; }
+	
 	void
 	ReachedEndOfStream();
 	
+	gui::SliderPane*
+	slider_pane() const { return slider_pane_; }
+	
+	void
+	UpdatePlayIcon(Song *song);
+	
+	gui::UpdateTableRange
+	UpdatePlayingSongPosition(const i64 pos_is_known);
+	
 private:
 	
-	void AddAction(QToolBar *tb, const QString &icon_name, const QString &action_name);
+	QAction*
+	AddAction(QToolBar *tb, const QString &icon_name, const QString &action_name);
+	
 	bool CreateGui();
 	QToolBar* CreateMediaActionsToolBar();
 	QToolBar* CreatePlaylistActionsToolBar();
@@ -73,6 +87,7 @@ private:
 	gui::TableModel *table_model_ = nullptr;
 	GstPlayer *player_ = nullptr;
 	DiscovererUserParams user_params_ = {nullptr, nullptr, nullptr};
+	QAction *play_pause_action_ = nullptr;
 };
 
 }

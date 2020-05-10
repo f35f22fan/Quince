@@ -16,10 +16,13 @@ public:
 	virtual ~GstPlayer();
 	
 	void
-	Play(Song *song_item);
+	PlayPause(Song *song);
 	
 	GstElement*
 	play_elem() const { return play_elem_; }
+	
+	void
+	SeekTo(const i64 new_pos);
 	
 private:
 	NO_ASSIGN_COPY_MOVE(GstPlayer);

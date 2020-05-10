@@ -15,6 +15,9 @@
 #include <QToolBar>
 #include <QUrl>
 
+static const char *ICON_NAME_PAUSED = "media-playback-pause";
+static const char *ICON_NAME_PLAY = "media-playback-start";
+
 /* Print a tag in a human-readable format (name: value) */
 static void
 print_tag_foreach (const GstTagList *tags, const gchar *tag, gpointer user_data)
@@ -260,12 +263,14 @@ App::AddBatch(QVector<quince::Song*> &vec)
 	return true;
 }
 
-void
-App::AddAction(QToolBar *tb, const QString &icon_name, const QString &action_name)
+QAction*
+App::AddAction(QToolBar *tb, const QString &icon_name,
+	const QString &action_name)
 {
 	QAction *action = tb->addAction(QIcon::fromTheme(icon_name), QString());
 	connect(action, &QAction::triggered,
 		[=] {ProcessAction(action_name);});
+	return action;
 }
 
 bool
@@ -298,8 +303,9 @@ App::CreateMediaActionsToolBar()
 {
 	QToolBar *tb = new QToolBar(this);
 	AddAction(tb, "go-previous", actions::MediaGoPrev);
-	AddAction(tb, "media-playback-start", actions::MediaPlayPause);
-	//AddAction(tb, "media-playback-pause", actions::MediaPause);
+	play_pause_action_ = AddAction(tb, ICON_NAME_PLAY,
+		actions::MediaPlayPause);
+	//AddAction(tb, ICON_NAME_PAUSE, actions::MediaPause);
 	AddAction(tb, "media-playback-stop", actions::MediaStop);
 	AddAction(tb, "go-next", actions::MediaGoNext);
 	
@@ -321,11 +327,19 @@ QVector<Song*>*
 App::current_playlist_songs() { return &table_model_->songs(); }
 
 Song*
-App::GetPlayingSong()
+App::GetCurrentSong(int *index)
 {
-	for (auto *song: table_model_->songs())
+	auto *songs = current_playlist_songs();
+	
+	for (int i = 0; i < songs->size(); i++)
 	{
-		if (song->is_playing()) {
+		auto *song = (*songs)[i];
+		
+		if (song->is_playing_or_paused())
+		{
+			if (index != nullptr)
+				*index = i;
+			
 			return song;
 		}
 	}
@@ -415,7 +429,7 @@ App::LoadSavedSongData()
 void
 App::MessageAsyncDone()
 {
-	Song *song = GetPlayingSong();
+	Song *song = GetCurrentSong();
 	
 	if (song == nullptr) {
 		mtl_trace();
@@ -466,20 +480,15 @@ App::PlaylistDoubleClicked(QModelIndex index)
 	}
 	
 	int last_playing = -1;
+	Song *playing = GetCurrentSong(&last_playing);
 	
-	for (int i = 0; i < songs.size(); i++)
-	{
-		auto *song = songs[i];
-		
-		if (song->is_playing()) {
-			song->playing_at(-1);
-			last_playing = i;
-			break;
-		}
+	if (playing != nullptr) {
+		playing->playing_at(-1);
+		playing->state(GST_STATE_NULL);
 	}
-	
+
 	Song *song = songs[row];
-	player_->Play(song);
+	player_->PlayPause(song);
 	song->playing_at(0);
 	table_model_->UpdateRange(row, gui::Column::Name, last_playing, gui::Column::PlayingAt);
 }
@@ -487,8 +496,24 @@ App::PlaylistDoubleClicked(QModelIndex index)
 void
 App::ProcessAction(const QString &action_name)
 {
-	auto ba = action_name.toLocal8Bit();
-	mtl_trace("Action: \"%s\"", ba.data());
+	if (action_name == actions::MediaPlayPause)
+	{
+		int song_index = -1;
+		Song *playing_song = GetCurrentSong(&song_index);
+		
+		if (playing_song == nullptr)
+		{
+			mtl_trace();
+			return;
+		}
+		
+		player_->PlayPause(playing_song);
+		table_model_->UpdateRange(song_index, gui::Column::Name,
+			song_index, gui::Column::PlayingAt);
+	} else {
+		auto ba = action_name.toLocal8Bit();
+		mtl_trace("Action skipped: \"%s\"", ba.data());
+	}
 }
 
 void
@@ -510,6 +535,61 @@ App::ReachedEndOfStream()
 	
 	table_model_->UpdateRange(last_playing, gui::Column::Name,
 		last_playing, gui::Column::PlayingAt);
+}
+
+void
+App::UpdatePlayIcon(Song *song)
+{
+	CHECK_PTR_RET_VOID(song);
+	
+	const char *icon_name = song->is_playing() ?
+		ICON_NAME_PAUSED : ICON_NAME_PLAY;
+	
+	play_pause_action_->setIcon(QIcon::fromTheme(icon_name));
+}
+
+gui::UpdateTableRange
+App::UpdatePlayingSongPosition(const i64 pos_is_known)
+{
+	Song *song = GetCurrentSong();
+	
+	if (song == nullptr || !song->is_playing())
+		return gui::UpdateTableRange::OneColumn;
+	
+	i64 position = -1;
+	
+	if (pos_is_known >= 0) {
+		position = pos_is_known;
+	} else if (!gst_element_query_position (play_elem(), GST_FORMAT_TIME,
+		&position))
+	{
+		mtl_trace();
+		return gui::UpdateTableRange::OneColumn;
+	}
+	
+	song->playing_at(position);
+	
+	if (!song->meta().is_duration_set())
+	{
+		mtl_warn("WTH");
+		/*
+		duration = -1;
+		gboolean ok = gst_element_query_duration (play_elem,
+			GST_FORMAT_TIME, &duration);
+			
+		if (!ok) {
+			mtl_trace();
+			return false;
+		}
+		song->meta().duration(duration);
+		*/
+		return gui::UpdateTableRange::WholeRow;
+		
+	}
+	
+	slider_pane_->UpdatePosition(position);
+	
+	return gui::UpdateTableRange::OneColumn;
 }
 
 } // quince::

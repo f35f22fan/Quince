@@ -5,6 +5,7 @@
 #include "../audio/Meta.hpp"
 #include "../Duration.hpp"
 #include "../Song.hpp"
+#include "SliderPane.hpp"
 
 #include <QFont>
 #include <QTime>
@@ -67,10 +68,15 @@ TableModel::data(const QModelIndex &index, int role) const
 			auto d = Duration::FromNs(song->meta().duration());
 			return d.toDurationString();
 		} else if (col == Column::PlayingAt) {
-			if (song->is_playing()) {
+			if (song->is_playing_or_paused()) {
 				playing_row_ = row;
 				auto d = Duration::FromNs(song->playing_at());
-				return d.toDurationString();
+				QString d_str = d.toDurationString();
+				
+				if (song->is_paused())
+					return QString("[").append(d_str).append(']');
+				
+				return d_str;
 			}
 		} else if (col == Column::Bitrate) {
 			const i32 bitrate = meta.bitrate();
@@ -103,7 +109,7 @@ TableModel::data(const QModelIndex &index, int role) const
 	} else if (role == Qt::FontRole) {
 		QFont font;
 		
-		if (song->is_playing())
+		if (song->is_playing_or_paused())
 			font.setBold(true);
 		
 		return font;
@@ -125,7 +131,7 @@ TableModel::headerData(int section, Qt::Orientation orientation, int role) const
 			case Column::Duration:
 				return QLatin1String("Duration");
 			case Column::PlayingAt:
-				return QLatin1String("Playing At");
+				return QLatin1String("Time");
 			case Column::Bitrate:
 				return QLatin1String("Bitrate");
 			case Column::Channels:
@@ -147,60 +153,23 @@ TableModel::headerData(int section, Qt::Orientation orientation, int role) const
 void
 TableModel::TimerHit()
 {
+	if (app_->slider_pane()->slider_dragged_by_user())
+		return;
+	
 	if (playing_row_ >= songs_.size())
 		return;
 	
-	bool update_one_column = UpdatePlayingSongPosition();
+	Column c;
 	
-	Column c = update_one_column ? Column::PlayingAt : Column::Duration;
+	if (app_->UpdatePlayingSongPosition(-1) == UpdateTableRange::OneColumn)
+		c = Column::PlayingAt;
+	else
+		c = Column::Duration;
+	
 	QModelIndex top_left = createIndex(playing_row_, c);
 	QModelIndex bottom_right = createIndex(playing_row_, Column::PlayingAt);
 	
 	emit dataChanged(top_left, bottom_right, {Qt::DisplayRole});
-}
-
-bool
-TableModel::UpdatePlayingSongPosition()
-{
-	Song *song = app_->GetPlayingSong();
-	
-	if (song == nullptr)
-		return true;
-	
-	if (!song->is_playing())
-	{
-		mtl_trace();
-		return true;
-	}
-	
-	GstElement *play_elem = app_->play_elem();
-	i64 duration = -1;
-	gboolean ok = gst_element_query_position (play_elem,
-		GST_FORMAT_TIME, &duration);
-		
-	if (!ok) {
-		mtl_trace();
-		return true;
-	}
-	
-	song->playing_at(duration);
-	
-	if (!song->meta().is_duration_set())
-	{
-		duration = -1;
-		gboolean ok = gst_element_query_duration (play_elem,
-			GST_FORMAT_TIME, &duration);
-			
-		if (!ok) {
-			mtl_trace();
-			return false;
-		}
-		song->meta().duration(duration);
-		
-		return false;
-	}
-	
-	return true;
 }
 
 void
