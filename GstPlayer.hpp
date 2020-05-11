@@ -15,11 +15,11 @@ public:
 	GstPlayer(quince::App *app, int argc, char *argv[]);
 	virtual ~GstPlayer();
 	
-	void
-	PlayPause(Song *song);
-	
 	GstElement*
 	play_elem() const { return play_elem_; }
+	
+	void
+	PlayPause(Song *song);
 	
 	void
 	SeekTo(const i64 new_pos);

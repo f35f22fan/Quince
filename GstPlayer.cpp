@@ -78,9 +78,6 @@ GST_STATE_PLAYING – the element is PLAYING, the GstClock is running and the da
 	GstState new_state = song->is_playing()
 		? GST_STATE_PAUSED : GST_STATE_PLAYING;
 	
-//	mtl_info("New state: %s", (new_state == GST_STATE_PAUSED) ?
-//		"PAUSED" : "PLAYING");
-	
 	if (!song->is_playing_or_paused())
 	{
 		gst_element_set_state(play_elem_, GST_STATE_NULL);
@@ -97,8 +94,9 @@ GST_STATE_PLAYING – the element is PLAYING, the GstClock is running and the da
 void
 GstPlayer::SeekTo(const i64 new_pos)
 {
+	auto flag = GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT;
 	if (gst_element_seek_simple(play_elem_, GST_FORMAT_TIME,
-		GST_SEEK_FLAG_SKIP, new_pos))
+		GstSeekFlags(flag), new_pos))
 	{
 		app_->UpdatePlayingSongPosition(new_pos);
 	}

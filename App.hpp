@@ -1,5 +1,6 @@
 #pragma once
 
+#include "audio.hxx"
 #include "decl.hxx"
 #include "err.hpp"
 #include "gui/decl.hxx"
@@ -42,6 +43,9 @@ public:
 	Song*
 	GetCurrentSong(int *index = nullptr);
 	
+	Song*
+	GetFirstSongInCurrentPlaylist();
+	
 	bool
 	InitDiscoverer();
 	
@@ -56,6 +60,9 @@ public:
 	
 	GstPlayer*
 	player() const { return player_; }
+	
+	void
+	PlayNextSong();
 	
 	void
 	ReachedEndOfStream();
@@ -88,6 +95,7 @@ private:
 	GstPlayer *player_ = nullptr;
 	DiscovererUserParams user_params_ = {nullptr, nullptr, nullptr};
 	QAction *play_pause_action_ = nullptr;
+	audio::PlayMode play_mode_ = audio::PlayMode::NotSet;
 };
 
 }

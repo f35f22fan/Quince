@@ -48,6 +48,11 @@ public:
 	void
 	UpdateRange(int row1, Column c1, int row2, Column c2);
 	
+	void
+	UpdateRangeDefault(int row) {
+		UpdateRange(row, Column::Name, row, Column::PlayingAt);
+	}
+	
 private:
 	
 	void TimerHit();

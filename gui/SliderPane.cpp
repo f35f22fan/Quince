@@ -97,12 +97,14 @@ SliderPane::SliderValueChanged(int value)
 		timespec diff;
 		audio::timespec_diff(&last_seeked_, &now, &diff);
 		i64 ms = diff.tv_sec * 1000L + diff.tv_nsec / 1000000L;
+		const i64 nano = i64(value) * NS_MS_GAP;
 		
 		if (ms > 300)
 		{
-			//mtl_info("Seek! %ld", ms);
 			last_seeked_ = now;
-			app_->player()->SeekTo(i64(value) * NS_MS_GAP);
+			app_->player()->SeekTo(nano); // UpdatePosition() called implicitly
+		} else {
+			UpdatePosition(nano);
 		}
 	}
 }

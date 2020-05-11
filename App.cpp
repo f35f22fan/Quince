@@ -202,6 +202,7 @@ namespace quince {
 
 App::App(int argc, char *argv[])
 {
+	play_mode_ = audio::PlayMode::StopAtPlaylistEnd;
 	player_ = new GstPlayer(this, argc, argv);
 	CHECK_TRUE_RET_VOID(InitDiscoverer());
 	CHECK_TRUE_RET_VOID(LoadSavedSongData());
@@ -302,12 +303,12 @@ QToolBar*
 App::CreateMediaActionsToolBar()
 {
 	QToolBar *tb = new QToolBar(this);
-	AddAction(tb, "go-previous", actions::MediaGoPrev);
+	AddAction(tb, "go-previous", actions::MediaPlayPrev);
 	play_pause_action_ = AddAction(tb, ICON_NAME_PLAY,
 		actions::MediaPlayPause);
 	//AddAction(tb, ICON_NAME_PAUSE, actions::MediaPause);
 	AddAction(tb, "media-playback-stop", actions::MediaStop);
-	AddAction(tb, "go-next", actions::MediaGoNext);
+	AddAction(tb, "go-next", actions::MediaPlayNext);
 	
 	return tb;
 }
@@ -331,6 +332,9 @@ App::GetCurrentSong(int *index)
 {
 	auto *songs = current_playlist_songs();
 	
+	if (songs == nullptr)
+		return nullptr;
+	
 	for (int i = 0; i < songs->size(); i++)
 	{
 		auto *song = (*songs)[i];
@@ -345,6 +349,17 @@ App::GetCurrentSong(int *index)
 	}
 	
 	return nullptr;
+}
+
+Song*
+App::GetFirstSongInCurrentPlaylist()
+{
+	auto *songs = current_playlist_songs();
+	
+	if (songs == nullptr || songs->empty())
+		return nullptr;
+	
+	return (*songs)[0];
 }
 
 void
@@ -446,7 +461,7 @@ App::MessageAsyncDone()
 		return;
 	}
 	
-	mtl_info("State is: %s", audio::StateToString(state));
+	//mtl_info("State is: %s", audio::StateToString(state));
 	
 	if (!song->meta().is_duration_set())
 	{
@@ -494,6 +509,55 @@ App::PlaylistDoubleClicked(QModelIndex index)
 }
 
 void
+App::PlayNextSong()
+{
+	auto *vec = current_playlist_songs();
+	
+	if (vec == nullptr)
+		return;
+	
+	int song_index = -1;
+	GetCurrentSong(&song_index);
+	
+	if (song_index == -1)
+	{
+		Song *song = GetFirstSongInCurrentPlaylist();
+		
+		if (song == nullptr)
+			return;
+		
+		song_index = 0;
+	} else {
+		if (song_index == vec->size() -1) {
+			if (play_mode_ == audio::PlayMode::RepeatPlaylist) {
+				if (GetFirstSongInCurrentPlaylist() != nullptr)
+					song_index = 0;
+			}
+		} else {
+			auto *last_song = (*vec)[song_index];
+			
+			if (last_song != nullptr) {
+				last_song->playing_at(-1);
+				last_song->state(GST_STATE_NULL);
+				table_model_->UpdateRangeDefault(song_index);
+				song_index++;
+			} else {
+				mtl_trace();
+			}
+		}
+	}
+	
+	if (song_index >= vec->size()) {
+		mtl_trace();
+		return;
+	}
+	
+	Song *playing_song = (*vec)[song_index];
+	player_->PlayPause(playing_song);
+	table_model_->UpdateRangeDefault(song_index);
+}
+
+void
 App::ProcessAction(const QString &action_name)
 {
 	if (action_name == actions::MediaPlayPause)
@@ -503,13 +567,20 @@ App::ProcessAction(const QString &action_name)
 		
 		if (playing_song == nullptr)
 		{
-			mtl_trace();
-			return;
+			playing_song = GetFirstSongInCurrentPlaylist();
+			
+			if (playing_song == nullptr) {
+				mtl_trace();
+				return;
+			}
+			
+			song_index = 0;
 		}
 		
 		player_->PlayPause(playing_song);
-		table_model_->UpdateRange(song_index, gui::Column::Name,
-			song_index, gui::Column::PlayingAt);
+		table_model_->UpdateRangeDefault(song_index);
+	} else if (action_name == actions::MediaPlayNext) {
+		PlayNextSong();
 	} else {
 		auto ba = action_name.toLocal8Bit();
 		mtl_trace("Action skipped: \"%s\"", ba.data());
@@ -519,12 +590,20 @@ App::ProcessAction(const QString &action_name)
 void
 App::ReachedEndOfStream()
 {
-	auto &songs = table_model_->songs();
+	mtl_trace();
+	auto *vec = current_playlist_songs();
+	
+	if (vec == nullptr)
+	{
+		mtl_trace();
+		return;
+	}
+	
 	int last_playing = -1;
 	
-	for (int i = 0; i < songs.size(); i++)
+	for (int i = 0; i < vec->size(); i++)
 	{
-		auto *song = songs[i];
+		auto *song = (*vec)[i];
 		
 		if (song->is_playing()) {
 			song->playing_at(-1);
@@ -533,8 +612,21 @@ App::ReachedEndOfStream()
 		}
 	}
 	
-	table_model_->UpdateRange(last_playing, gui::Column::Name,
-		last_playing, gui::Column::PlayingAt);
+	if (last_playing == -1 || play_mode_ == audio::PlayMode::StopAtTrackEnd)
+		return;
+	
+	table_model_->UpdateRangeDefault(last_playing);
+	
+	if (play_mode_ == audio::PlayMode::RepeatPlaylist ||
+		play_mode_ == audio::PlayMode::StopAtPlaylistEnd) {
+		mtl_trace();
+		PlayNextSong();
+	} else if (play_mode_ == audio::PlayMode::RepeatTrack) {
+		mtl_trace();
+		auto *song = (*vec)[last_playing];
+		player_->PlayPause(song);
+		table_model_->UpdateRangeDefault(last_playing);
+	}
 }
 
 void
@@ -563,7 +655,7 @@ App::UpdatePlayingSongPosition(const i64 pos_is_known)
 	} else if (!gst_element_query_position (play_elem(), GST_FORMAT_TIME,
 		&position))
 	{
-		mtl_trace();
+		//mtl_trace();
 		return gui::UpdateTableRange::OneColumn;
 	}
 	

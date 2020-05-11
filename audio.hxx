@@ -4,6 +4,14 @@
 
 namespace quince::audio {
 
+enum class PlayMode : i8 {
+	NotSet = -1,
+	RepeatTrack,
+	RepeatPlaylist,
+	StopAtTrackEnd,
+	StopAtPlaylistEnd,
+};
+
 //Bitrates, assuming MPEG 1 Audio Layer 3
 const i32 Mp3BitrateArrayLen = 16;
 const i32 Mp3Bitrates[Mp3BitrateArrayLen] = {
