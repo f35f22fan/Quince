@@ -31,27 +31,42 @@ TableModel::~TableModel()
 	songs_.clear();
 }
 
+QModelIndex
+TableModel::index(int row, int column, const QModelIndex &parent) const
+{
+	return createIndex(row, column);
+}
+
 int
 TableModel::rowCount(const QModelIndex &parent) const
 {
+	if (parent.isValid())
+		return 0;
+	
 	return songs_.size();
 }
 
 int
 TableModel::columnCount(const QModelIndex &parent) const
 {
+	if (parent.isValid())
+		return 0;
+	
 	return Column::Count;
 }
 
 QVariant
 TableModel::data(const QModelIndex &index, int role) const
 {
+	Q_ASSERT(checkIndex(index, QAbstractItemModel::CheckIndexOption::IndexIsValid | QAbstractItemModel::CheckIndexOption::ParentIsInvalid));
+	
 	const int row = index.row();
 	const int col = index.column();
 	
 	if (row >= songs_.size())
 	{
-		return QVariant();
+		mtl_info("No songs");
+		return {};
 	}
 	
 	auto *song = songs_[row];
@@ -62,11 +77,10 @@ TableModel::data(const QModelIndex &index, int role) const
 		if (col == Column::Name) {
 			return song->display_name();
 		} else if (col == Column::Duration) {
-			if (!meta.is_duration_set())
-				return "--";
-			
-			auto d = Duration::FromNs(song->meta().duration());
-			return d.toDurationString();
+			if (meta.is_duration_set()) {
+				auto d = Duration::FromNs(song->meta().duration());
+				return d.toDurationString();
+			}
 		} else if (col == Column::PlayingAt) {
 			if (song->is_playing_or_paused()) {
 				playing_row_ = row;
@@ -101,7 +115,6 @@ TableModel::data(const QModelIndex &index, int role) const
 		
 		return QVariant();
 	} else if (role == Qt::TextAlignmentRole) {
-		
 		if (col == Column::Name)
 			return Qt::AlignLeft + Qt::AlignVCenter;
 		
@@ -115,7 +128,7 @@ TableModel::data(const QModelIndex &index, int role) const
 		return font;
 	}
 	
-	return QVariant();
+	return {};
 }
 
 QVariant

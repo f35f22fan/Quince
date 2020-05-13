@@ -13,9 +13,6 @@ public:
 	Table();
 	virtual ~Table();
 	
-	static Table*
-	Create(QAbstractTableModel *tm);
-	
 private:
 	NO_ASSIGN_COPY_MOVE(Table);
 	

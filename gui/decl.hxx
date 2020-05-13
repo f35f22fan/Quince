@@ -9,6 +9,7 @@ enum class UpdateTableRange : u8 {
 	WholeRow,
 };
 
+class Playlist;
 class SliderPane;
 class Table;
 class TableModel;

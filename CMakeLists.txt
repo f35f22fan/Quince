@@ -62,15 +62,13 @@ set(src_files
     actions.hxx
     audio.cc audio.hh audio.hxx
     audio/decl.hxx
-    audio/Meta.cpp audio/Meta.hpp
-#    audio/flac.cc audio/flac.hh
-#    audio/mp3.cc audio/mp3.hh
-#    audio/ogg.cc audio/ogg.hh
+    audio/Meta.hpp
     App.cpp App.hpp
     decl.hxx
     Duration.cpp Duration.hpp
     GstPlayer.cpp GstPlayer.hpp
     gui/decl.hxx
+    gui/Playlist.cpp gui/Playlist.hpp
     gui/SliderPane.cpp gui/SliderPane.hpp
     gui/Table.cpp gui/Table.hpp
     gui/TableModel.cpp gui/TableModel.hpp

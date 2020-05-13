@@ -42,6 +42,31 @@ public:
 	QVariant
 	headerData(int section, Qt::Orientation orientation, int role) const override;
 	
+	QModelIndex
+	index(int row, int column, const QModelIndex &parent) const override;
+	
+	virtual bool insertRows(int row, int count, const QModelIndex &parent) override {
+		mtl_trace();
+		return true;
+	}
+	virtual bool insertColumns(int column, int count, const QModelIndex &parent) override {
+		mtl_trace();
+		return true;
+	}
+	virtual bool removeRows(int row, int count, const QModelIndex &parent) override {
+		mtl_trace();
+		return true;
+	}
+	virtual bool removeColumns(int column, int count, const QModelIndex &parent) override {
+		mtl_trace();
+		return true;
+	}
+	
+	void
+	RowsInserted(i32 first, i32 last) {
+		emit rowsInserted(QModelIndex(), first, last, {});
+	}
+	
 	QVector<Song*>&
 	songs() { return songs_; }
 	
@@ -51,6 +76,12 @@ public:
 	void
 	UpdateRangeDefault(int row) {
 		UpdateRange(row, Column::Name, row, Column::PlayingAt);
+	}
+	
+	void
+	UpdateRowRange(int row_start, int row_end) {
+		UpdateRange(row_start, Column::Name, row_end,
+			Column(Column::Count - 1));
 	}
 	
 private:

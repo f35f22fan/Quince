@@ -10,6 +10,8 @@
 #include <gst/pbutils/pbutils.h>
 
 #include <QMainWindow>
+#include <QStackedLayout>
+#include <QTabBar>
 #include <QVector>
 
 namespace quince {
@@ -31,8 +33,10 @@ public:
 	App(int argc, char *argv[]);
 	virtual ~App();
 	
-	bool
-	AddBatch(QVector<quince::Song*> &vec);
+	bool AddBatch(QVector<quince::Song*> &vec);
+	
+	gui::TableModel*
+	current_table_model();
 	
 	QVector<Song*>*
 	current_playlist_songs();
@@ -48,6 +52,8 @@ public:
 	
 	bool
 	InitDiscoverer();
+	
+	bool LoadSavedSongData(gui::TableModel *model);
 	
 	void
 	MessageAsyncDone();
@@ -68,7 +74,7 @@ public:
 	ReachedEndOfStream();
 	
 	gui::SliderPane*
-	slider_pane() const { return slider_pane_; }
+	slider_pane() const { return seek_pane_; }
 	
 	void
 	UpdatePlayIcon(Song *song);
@@ -79,23 +85,26 @@ public:
 private:
 	
 	QAction*
-	AddAction(QToolBar *tb, const QString &icon_name, const QString &action_name);
+	AddAction(QToolBar *tb, const QString &icon_name,
+		const QString &action_name, const char *tooltip = nullptr);
 	
 	bool CreateGui();
 	QToolBar* CreateMediaActionsToolBar();
 	QToolBar* CreatePlaylistActionsToolBar();
-	bool LoadSavedSongData();
+	QTabBar* CreateTabBar();
+	void CreatePlaylist(const QString &name);
 	void ProcessAction(const QString &action_name);
 	
 	NO_ASSIGN_COPY_MOVE(App);
 	
-	gui::SliderPane *slider_pane_ = nullptr;
-	gui::Table *table_ = nullptr;
-	gui::TableModel *table_model_ = nullptr;
+	gui::SliderPane *seek_pane_ = nullptr;
 	GstPlayer *player_ = nullptr;
 	DiscovererUserParams user_params_ = {nullptr, nullptr, nullptr};
 	QAction *play_pause_action_ = nullptr;
 	audio::PlayMode play_mode_ = audio::PlayMode::NotSet;
+	QTabBar *tab_bar_ = nullptr;
+	QVector<gui::Playlist*> playlists_;
+	QStackedLayout *playlist_stack_ = nullptr;
 };
 
 }

@@ -161,9 +161,9 @@ ReadID3V2Size(std::ifstream& infile)
 bool
 ReadFileMeta(const char *full_path, Meta &meta)
 {
-	if (meta.is_codec_mp3())
+	if (meta.is_codec_mp3()) {
 		ReadFileDurationMp3(full_path, meta);
-	else if (meta.is_codec_flac())
+	} else if (meta.is_codec_flac())
 		ReadFileDurationFlac(full_path, meta);
 	else if (meta.is_codec_ogg_opus())
 		ReadFileDurationOggOpus(full_path, meta);

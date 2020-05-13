@@ -15,7 +15,6 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 	switch (GST_MESSAGE_TYPE(msg))
 	{
 	case GST_MESSAGE_EOS: {
-		mtl_info("End of stream");
 		app->ReachedEndOfStream();
 		break;
 	}
