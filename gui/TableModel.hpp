@@ -12,7 +12,7 @@
 
 namespace quince::gui {
 
-enum Column {
+enum class Column : i8 {
 	Name = 0,
 	Duration,
 	PlayingAt,
@@ -63,7 +63,7 @@ public:
 	}
 	
 	void
-	RowsInserted(i32 first, i32 last) {
+	SignalRowsInserted(i32 first, i32 last) {
 		emit rowsInserted(QModelIndex(), first, last, {});
 	}
 	
@@ -81,7 +81,7 @@ public:
 	void
 	UpdateRowRange(int row_start, int row_end) {
 		UpdateRange(row_start, Column::Name, row_end,
-			Column(Column::Count - 1));
+			Column(i8(Column::Count) - 1));
 	}
 	
 private:

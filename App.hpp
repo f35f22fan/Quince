@@ -68,7 +68,10 @@ public:
 	player() const { return player_; }
 	
 	void
-	PlayNextSong();
+	PlaySong(const audio::Pick direction);
+	
+	void
+	PlayStop();
 	
 	void
 	ReachedEndOfStream();
@@ -92,7 +95,10 @@ private:
 	QToolBar* CreateMediaActionsToolBar();
 	QToolBar* CreatePlaylistActionsToolBar();
 	QTabBar* CreateTabBar();
-	void CreatePlaylist(const QString &name);
+	gui::Playlist* CreatePlaylist(const QString &name, int *index = nullptr);
+	int PickSong(QVector<Song*> *vec, const int current_song_index,
+		const audio::Pick pick);
+	
 	void ProcessAction(const QString &action_name);
 	
 	NO_ASSIGN_COPY_MOVE(App);

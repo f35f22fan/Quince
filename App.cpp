@@ -221,9 +221,12 @@ App::~App() {
 		user_params_.loop = nullptr;
 	}
 	
-	for (gui::Playlist *item: playlists_) {
-		delete item;
-	}
+
+// ==>int QStackedWidget::addWidget(QWidget *widget)<==
+// Ownership of widget is passed on to the QStackedWidget.
+//	for (gui::Playlist *item: playlists_) {
+//		delete item;
+//	}
 	
 	playlists_.clear();
 }
@@ -305,7 +308,8 @@ App::CreateGui()
 	stack_widget->setLayout(playlist_stack_);
 	layout->addWidget(stack_widget);
 	
-	CreatePlaylist("Default");
+	auto *playlist = CreatePlaylist("Default");
+	seek_pane_->DisplayPlaylistDuration(playlist);
 	
 	addToolBar(Qt::BottomToolBarArea, CreatePlaylistActionsToolBar());
 	
@@ -320,7 +324,7 @@ App::CreateMediaActionsToolBar()
 	play_pause_action_ = AddAction(tb, ICON_NAME_PLAY,
 		actions::MediaPlayPause);
 	//AddAction(tb, ICON_NAME_PAUSE, actions::MediaPause);
-	AddAction(tb, "media-playback-stop", actions::MediaStop);
+	AddAction(tb, "media-playback-stop", actions::MediaPlayStop);
 	AddAction(tb, "go-next", actions::MediaPlayNext);
 	
 	return tb;
@@ -337,13 +341,18 @@ App::CreatePlaylistActionsToolBar()
 	return tb;
 }
 
-void
-App::CreatePlaylist(const QString &name)
+gui::Playlist*
+App::CreatePlaylist(const QString &name, int *index)
 {
 	gui::Playlist *playlist = new gui::Playlist(this, name);
-	playlist_stack_->addWidget(playlist);
+	int n = playlist_stack_->addWidget(playlist);
 	tab_bar_->addTab(name);
 	playlists_.append(playlist);
+	
+	if (index != nullptr)
+		*index = n;
+	
+	return playlist;
 }
 
 gui::TableModel*
@@ -401,6 +410,9 @@ App::GetCurrentSong(int *index)
 			return song;
 		}
 	}
+	
+	if (index != nullptr)
+		*index = -1;
 	
 	return nullptr;
 }
@@ -488,16 +500,13 @@ App::LoadSavedSongData(gui::TableModel *model)
 	{
 		auto *song = Song::FromFile(file, dir_path);
 		
-		if (song == nullptr) {
-			mtl_trace();
-			continue;
-		} else {
+		if (song != nullptr)
 			songs.append(song);
-		}
 	}
 	
 	bool ok = AddBatch(songs);
-	model->RowsInserted(0, songs.size());
+	model->SignalRowsInserted(0, songs.size() - 1);
+	
 	return ok;
 }
 
@@ -543,43 +552,19 @@ GstElement*
 App::play_elem() const { return player_->play_elem(); }
 
 void
-App::PlayNextSong()
+App::PlaySong(const audio::Pick direction)
 {
 	auto *vec = current_playlist_songs();
 	
 	if (vec == nullptr)
 		return;
 	
-	int song_index = -1;
-	GetCurrentSong(&song_index);
+	int current_song_index;
+	GetCurrentSong(&current_song_index);
+	int song_index = PickSong(vec, current_song_index, direction);
 	
 	if (song_index == -1)
-	{
-		Song *song = GetFirstSongInCurrentPlaylist();
-		
-		if (song == nullptr)
-			return;
-		
-		song_index = 0;
-	} else {
-		if (song_index == vec->size() -1) {
-			if (play_mode_ == audio::PlayMode::RepeatPlaylist) {
-				if (GetFirstSongInCurrentPlaylist() != nullptr)
-					song_index = 0;
-			}
-		} else {
-			auto *last_song = (*vec)[song_index];
-			
-			if (last_song != nullptr) {
-				last_song->playing_at(-1);
-				last_song->state(GST_STATE_NULL);
-				current_table_model()->UpdateRangeDefault(song_index);
-				song_index++;
-			} else {
-				mtl_trace();
-			}
-		}
-	}
+		return;
 	
 	if (song_index >= vec->size()) {
 		mtl_trace();
@@ -589,6 +574,69 @@ App::PlayNextSong()
 	Song *playing_song = (*vec)[song_index];
 	player_->PlayPause(playing_song);
 	current_table_model()->UpdateRangeDefault(song_index);
+}
+
+int
+App::PickSong(QVector<Song*> *vec, const int current_song_index,
+	const audio::Pick pick)
+{
+	if (pick == audio::Pick::Next)
+	{
+		if (current_song_index == -1) {
+			if (GetFirstSongInCurrentPlaylist() != nullptr)
+				return 0;
+			return -1;
+		} else if (current_song_index == vec->size() -1) {
+			if (play_mode_ == audio::PlayMode::RepeatPlaylist) {
+				if (GetFirstSongInCurrentPlaylist() != nullptr)
+					return 0;
+			}
+			
+			return -1;
+		} else {
+			auto *last_song = (*vec)[current_song_index];
+			last_song->playing_at(-1);
+			last_song->state(GST_STATE_NULL);
+			current_table_model()->UpdateRangeDefault(current_song_index);
+			return current_song_index + 1;
+		}
+	} else if (pick == audio::Pick::Prev) {
+		
+		if (current_song_index == -1) {
+			auto *model = current_table_model();
+			
+			if (model == nullptr)
+				return -1;
+			
+			QVector<Song*> &vec = model->songs();
+			return vec.isEmpty() ? -1 : vec.size() - 1;
+		} else if (current_song_index == 0) {
+			return -1;
+		} else {
+			auto *last_song = (*vec)[current_song_index];
+			last_song->playing_at(-1);
+			last_song->state(GST_STATE_NULL);
+			current_table_model()->UpdateRangeDefault(current_song_index);
+			return current_song_index - 1;
+		}
+	} else {
+		mtl_warn();
+		return -1;
+	}
+}
+
+void
+App::PlayStop()
+{
+	int index;
+	Song *song = GetCurrentSong(&index);
+	
+	if (song == nullptr)
+		return;
+	
+	player_->StopPlaying(song);
+	current_table_model()->UpdateRangeDefault(index);
+	UpdatePlayIcon(song);
 }
 
 void
@@ -614,7 +662,11 @@ App::ProcessAction(const QString &action_name)
 		player_->PlayPause(playing_song);
 		current_table_model()->UpdateRangeDefault(song_index);
 	} else if (action_name == actions::MediaPlayNext) {
-		PlayNextSong();
+		PlaySong(audio::Pick::Next);
+	} else if (action_name == actions::MediaPlayPrev) {
+		PlaySong(audio::Pick::Prev);
+	} else if (action_name == actions::MediaPlayStop) {
+		PlayStop();
 	} else {
 		auto ba = action_name.toLocal8Bit();
 		mtl_trace("Action skipped: \"%s\"", ba.data());
@@ -652,7 +704,7 @@ App::ReachedEndOfStream()
 	
 	if (play_mode_ == audio::PlayMode::RepeatPlaylist ||
 		play_mode_ == audio::PlayMode::StopAtPlaylistEnd) {
-		PlayNextSong();
+		PlaySong(audio::Pick::Next);
 	} else if (play_mode_ == audio::PlayMode::RepeatTrack) {
 		auto *song = (*vec)[last_playing];
 		player_->PlayPause(song);

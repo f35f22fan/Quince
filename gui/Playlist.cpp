@@ -29,13 +29,13 @@ Playlist::CreateGui()
 	table_->setModel(table_model_);
 	app_->LoadSavedSongData(table_model_);
 	// column widths to be set after setting the model
-	table_->setColumnWidth(Column::Name, 500);
-	table_->setColumnWidth(Column::Duration, 120);
-	table_->setColumnWidth(Column::PlayingAt, 120);
-	table_->setColumnWidth(Column::Bitrate, 120);
-	table_->setColumnWidth(Column::BitsPerSample, 120);
-	table_->setColumnWidth(Column::Channels, 120);
-	table_->setColumnWidth(Column::SampleRate, 120);
+	table_->setColumnWidth(i8(Column::Name), 500);
+	table_->setColumnWidth(i8(Column::Duration), 120);
+	table_->setColumnWidth(i8(Column::PlayingAt), 120);
+	table_->setColumnWidth(i8(Column::Bitrate), 120);
+	table_->setColumnWidth(i8(Column::BitsPerSample), 120);
+	table_->setColumnWidth(i8(Column::Channels), 120);
+	table_->setColumnWidth(i8(Column::SampleRate), 120);
 	
 	connect(table_, &QTableView::doubleClicked, this,
 		&Playlist::PlaylistDoubleClicked);

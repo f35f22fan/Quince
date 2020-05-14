@@ -91,6 +91,15 @@ GST_STATE_PLAYING – the element is PLAYING, the GstClock is running and the da
 }
 
 void
+GstPlayer::StopPlaying(Song *song)
+{
+	gst_element_set_state(play_elem_, GST_STATE_NULL);
+	song->playing_at(-1);
+	song->state(GST_STATE_NULL);
+	app_->slider_pane()->SetCurrentSong(nullptr);
+}
+
+void
 GstPlayer::SeekTo(const i64 new_pos)
 {
 	auto flag = GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT;

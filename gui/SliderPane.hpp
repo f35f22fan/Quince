@@ -3,6 +3,7 @@
 #include <QLabel>
 #include <QSlider>
 
+#include "decl.hxx"
 #include "../decl.hxx"
 #include "../err.hpp"
 #include "../types.hxx"
@@ -14,6 +15,9 @@ public:
 	
 	SliderPane(App *app);
 	virtual ~SliderPane();
+	
+	void
+	DisplayPlaylistDuration(Playlist *playlist);
 	
 	bool slider_dragged_by_user() const { return slider_dragged_by_user_; }
 	
@@ -34,7 +38,8 @@ private:
 	bool slider_dragged_by_user_ = false;
 	timespec last_seeked_ = {0, 0};
 	QSlider *slider_ = nullptr;
-	QLabel *position_label_ = nullptr, *duration_label_ = nullptr;
+	QLabel *position_label_ = nullptr, *duration_label_ = nullptr,
+		*playlist_duration_ = nullptr;
 };
 
 }

@@ -4,7 +4,9 @@
 #include "../audio.hh"
 #include "../Duration.hpp"
 #include "../GstPlayer.hpp"
+#include "Playlist.hpp"
 #include "../Song.hpp"
+#include "TableModel.hpp"
 
 #include <QBoxLayout>
 #include <time.h>
@@ -41,15 +43,51 @@ SliderPane::CreateGui()
 	
 	duration_label_ = new QLabel(this);
 	layout->addWidget(duration_label_);
+	
+	playlist_duration_ = new QLabel(this);
+	layout->addWidget(playlist_duration_);
+}
+
+void
+SliderPane::DisplayPlaylistDuration(Playlist *playlist)
+{
+	CHECK_PTR_RET_VOID(playlist);
+	QVector<Song*> &songs = playlist->table_model()->songs();
+	i64 total = 0;
+	i32 song_count = 0;
+	
+	for (Song *song: songs)
+	{
+		audio::Meta &meta = song->meta();
+		
+		if (meta.is_duration_set())
+		{
+			total += meta.duration();
+			song_count++;
+		}
+	}
+	
+	Duration d = Duration::FromNs(total);
+	QString s = QString(('[')).append(QString::number(song_count))
+	.append(" tracks, ")
+	.append(d.toDurationString())
+	.append(']');
+	playlist_duration_->setText(s);
 }
 
 void
 SliderPane::SetCurrentSong(Song *song)
 {
 	current_song_ = song;
-	const i64 max = song->meta().duration();
-	slider_->setMaximum(max / NS_MS_GAP);
-	SetLabelValue(duration_label_, max);
+	
+	if (current_song_ != nullptr)
+	{
+		const i64 max = song->meta().duration();
+		slider_->setMaximum(max / NS_MS_GAP);
+		SetLabelValue(duration_label_, max);
+	} else {
+		SetLabelValue(duration_label_, -1);
+	}
 }
 
 void

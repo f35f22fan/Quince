@@ -4,7 +4,7 @@
 
 namespace quince::actions {
 const auto MediaPlayPause = QLatin1String("MediaPlayPause");
-const auto MediaStop = QLatin1String("MediaStop");
+const auto MediaPlayStop = QLatin1String("MediaPlayStop");
 const auto MediaPlayNext = QLatin1String("MediaPlayNext");
 const auto MediaPlayPrev = QLatin1String("MediaPlayPrev");
 const auto PlaylistNew = QLatin1String("PlaylistNew");

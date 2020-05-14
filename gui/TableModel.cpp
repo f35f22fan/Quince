@@ -52,7 +52,7 @@ TableModel::columnCount(const QModelIndex &parent) const
 	if (parent.isValid())
 		return 0;
 	
-	return Column::Count;
+	return i8(Column::Count);
 }
 
 QVariant
@@ -61,7 +61,6 @@ TableModel::data(const QModelIndex &index, int role) const
 	Q_ASSERT(checkIndex(index, QAbstractItemModel::CheckIndexOption::IndexIsValid | QAbstractItemModel::CheckIndexOption::ParentIsInvalid));
 	
 	const int row = index.row();
-	const int col = index.column();
 	
 	if (row >= songs_.size())
 	{
@@ -71,6 +70,7 @@ TableModel::data(const QModelIndex &index, int role) const
 	
 	auto *song = songs_[row];
 	audio::Meta &meta = song->meta();
+	const Column col = static_cast<Column>(index.column());
 	
 	if (role == Qt::DisplayRole)
 	{
@@ -132,10 +132,11 @@ TableModel::data(const QModelIndex &index, int role) const
 }
 
 QVariant
-TableModel::headerData(int section, Qt::Orientation orientation, int role) const
+TableModel::headerData(int section_i, Qt::Orientation orientation, int role) const
 {
-	if (role == Qt::DisplayRole) {
-		
+	const Column section = static_cast<Column>(section_i);
+	if (role == Qt::DisplayRole)
+	{
 		if (orientation == Qt::Horizontal)
 		{
 			switch (section) {
@@ -155,9 +156,13 @@ TableModel::headerData(int section, Qt::Orientation orientation, int role) const
 				return QLatin1String("Sample Rate");
 			case Column::Genre:
 				return QLatin1String("Genre");
+			default: {
+				mtl_trace();
+				return {};
+			}
 			}
 		} else {
-			return QString::number(section + 1);
+			return QString::number(section_i + 1);
 		}
 	}
 	return QVariant();
@@ -179,8 +184,8 @@ TableModel::TimerHit()
 	else
 		c = Column::Duration;
 	
-	QModelIndex top_left = createIndex(playing_row_, c);
-	QModelIndex bottom_right = createIndex(playing_row_, Column::PlayingAt);
+	QModelIndex top_left = createIndex(playing_row_, int(c));
+	QModelIndex bottom_right = createIndex(playing_row_, int(Column::PlayingAt));
 	
 	emit dataChanged(top_left, bottom_right, {Qt::DisplayRole});
 }
@@ -198,8 +203,8 @@ TableModel::UpdateRange(int row1, Column c1, int row2, Column c2)
 		last = row2;
 	}
 	
-	QModelIndex top_left = createIndex(first, c1);
-	QModelIndex bottom_right = createIndex(last, c2);
+	QModelIndex top_left = createIndex(first, int(c1));
+	QModelIndex bottom_right = createIndex(last, int(c2));
 	emit dataChanged(top_left, bottom_right, {Qt::DisplayRole});
 }
 

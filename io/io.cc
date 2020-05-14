@@ -1,5 +1,7 @@
 #include "io.hh"
 
+#include "../err.hpp"
+
 namespace io {
 
 bool
@@ -30,8 +32,8 @@ IsSongExtension(const QString &dir_path, const QString &filename)
 	
 	QString ext = ext_ref.toString().toLower();
 	
-	if (ext == "mp3" || ext == "opus" || ext == "webm" || ext == "flac"
-		|| ext == "mka" || ext == "m4a")
+	if (ext == "mp3" || ext == "opus" || ext == "flac"
+		|| ext == "mka" || ext == "m4a" || ext == "webm")
 		return true;
 	
 	return false;
@@ -76,12 +78,8 @@ ListFiles(const QString &full_dir_path, QVector<io::File> &vec,
 			}
 		}
 		
-		if (ff != nullptr)
-		{
-			if (!ff(dir_path, name))
-				continue;
-		}
-			
+		if (ff != nullptr && !ff(dir_path, name))
+			continue;
 		
 		QString full_path = dir_path + name;
 		auto ba = full_path.toLocal8Bit();

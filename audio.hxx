@@ -4,6 +4,11 @@
 
 namespace quince::audio {
 
+enum class Pick : i8 {
+	Prev,
+	Next
+};
+
 enum class PlayMode : i8 {
 	NotSet = -1,
 	RepeatTrack,

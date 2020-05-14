@@ -24,6 +24,9 @@ public:
 	void
 	SeekTo(const i64 new_pos);
 	
+	void
+	StopPlaying(Song *song);
+	
 private:
 	NO_ASSIGN_COPY_MOVE(GstPlayer);
 	
