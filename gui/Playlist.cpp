@@ -30,8 +30,7 @@ Playlist::CreateGui()
 	app_->LoadSavedSongData(table_model_);
 	// column widths to be set after setting the model
 	table_->setColumnWidth(i8(Column::Name), 500);
-	table_->setColumnWidth(i8(Column::Duration), 120);
-	table_->setColumnWidth(i8(Column::PlayingAt), 120);
+	table_->setColumnWidth(i8(Column::Duration), 200);
 	table_->setColumnWidth(i8(Column::Bitrate), 120);
 	table_->setColumnWidth(i8(Column::BitsPerSample), 120);
 	table_->setColumnWidth(i8(Column::Channels), 120);
@@ -89,7 +88,8 @@ Playlist::PlaylistDoubleClicked(QModelIndex index)
 	Song *song = songs[row];
 	app_->player()->PlayPause(song);
 	song->playing_at(0);
-	table_model_->UpdateRange(row, gui::Column::Name, last_playing, gui::Column::PlayingAt);
+	table_model_->UpdateRange(row, gui::Column::Name,
+		last_playing, gui::Column::Duration);
 }
 
 }

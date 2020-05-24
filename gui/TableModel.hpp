@@ -15,7 +15,6 @@ namespace quince::gui {
 enum class Column : i8 {
 	Name = 0,
 	Duration,
-	PlayingAt,
 	Bitrate,
 	Channels,
 	BitsPerSample,
@@ -75,7 +74,7 @@ public:
 	
 	void
 	UpdateRangeDefault(int row) {
-		UpdateRange(row, Column::Name, row, Column::PlayingAt);
+		UpdateRange(row, Column::Name, row, Column::Duration);
 	}
 	
 	void

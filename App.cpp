@@ -484,9 +484,9 @@ App::LoadSavedSongData(gui::TableModel *model)
 	QVector<io::File> files;
 	const QString mp3_dir_path = "/media/data/Audio/0 Best Hits/";
 	const QString flac_dir_path = "/media/data/Audio/0 Chillout/Psydub/Phaeleh - (2010) Fallen Light [Afterglo, AFTRCD1001]/";
-	const QString opus_dir_path = "/media/data/Audio/0 Chillout/Psy Chillout/Solar Fields - Movements (Remastered) 2018 FLAC-WEB/";
+	const QString opus_dir_path = "/media/data/Audio/Twin Peaks/Twin Peaks - Music From the Limited Event Series (2017)(FLAC)(CD)/";
 	
-	QString dir_path = mp3_dir_path;
+	QString dir_path = opus_dir_path;
 	
 	if (!dir_path.endsWith('/'))
 		dir_path.append('/');

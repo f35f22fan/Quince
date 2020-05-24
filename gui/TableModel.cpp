@@ -40,9 +40,6 @@ TableModel::index(int row, int column, const QModelIndex &parent) const
 int
 TableModel::rowCount(const QModelIndex &parent) const
 {
-	if (parent.isValid())
-		return 0;
-	
 	return songs_.size();
 }
 
@@ -58,40 +55,47 @@ TableModel::columnCount(const QModelIndex &parent) const
 QVariant
 TableModel::data(const QModelIndex &index, int role) const
 {
-	Q_ASSERT(checkIndex(index, QAbstractItemModel::CheckIndexOption::IndexIsValid | QAbstractItemModel::CheckIndexOption::ParentIsInvalid));
+	const Column col = static_cast<Column>(index.column());
+	
+	if (role == Qt::TextAlignmentRole) {
+		if (col == Column::Name)
+			return Qt::AlignLeft + Qt::AlignVCenter;
+		
+		return Qt::AlignLeft /*Qt::AlignHCenter*/ + Qt::AlignVCenter;
+	}
 	
 	const int row = index.row();
 	
 	if (row >= songs_.size())
-	{
-		mtl_info("No songs");
 		return {};
-	}
 	
 	auto *song = songs_[row];
 	audio::Meta &meta = song->meta();
-	const Column col = static_cast<Column>(index.column());
 	
 	if (role == Qt::DisplayRole)
 	{
 		if (col == Column::Name) {
 			return song->display_name();
 		} else if (col == Column::Duration) {
+			QString s;
 			if (meta.is_duration_set()) {
 				auto d = Duration::FromNs(song->meta().duration());
-				return d.toDurationString();
+				s = d.toDurationString();
 			}
-		} else if (col == Column::PlayingAt) {
+			
 			if (song->is_playing_or_paused()) {
+				s.append(' ');
 				playing_row_ = row;
 				auto d = Duration::FromNs(song->playing_at());
-				QString d_str = d.toDurationString();
+				const QString dstr = d.toDurationString();
 				
 				if (song->is_paused())
-					return QString("[").append(d_str).append(']');
-				
-				return d_str;
+					s.append('|').append(dstr).append('|');
+				else
+					s.append('[').append(dstr).append(']');
 			}
+			
+			return s;
 		} else if (col == Column::Bitrate) {
 			const i32 bitrate = meta.bitrate();
 			
@@ -114,11 +118,6 @@ TableModel::data(const QModelIndex &index, int role) const
 		}
 		
 		return QVariant();
-	} else if (role == Qt::TextAlignmentRole) {
-		if (col == Column::Name)
-			return Qt::AlignLeft + Qt::AlignVCenter;
-		
-		return Qt::AlignLeft /*Qt::AlignHCenter*/ + Qt::AlignVCenter;
 	} else if (role == Qt::FontRole) {
 		QFont font;
 		
@@ -134,18 +133,17 @@ TableModel::data(const QModelIndex &index, int role) const
 QVariant
 TableModel::headerData(int section_i, Qt::Orientation orientation, int role) const
 {
-	const Column section = static_cast<Column>(section_i);
 	if (role == Qt::DisplayRole)
 	{
 		if (orientation == Qt::Horizontal)
 		{
+			const Column section = static_cast<Column>(section_i);
+			
 			switch (section) {
 			case Column::Name:
 				return QLatin1String("Name");
 			case Column::Duration:
 				return QLatin1String("Duration");
-			case Column::PlayingAt:
-				return QLatin1String("Time");
 			case Column::Bitrate:
 				return QLatin1String("Bitrate");
 			case Column::Channels:
@@ -161,11 +159,10 @@ TableModel::headerData(int section_i, Qt::Orientation orientation, int role) con
 				return {};
 			}
 			}
-		} else {
-			return QString::number(section_i + 1);
 		}
+		return QString::number(section_i + 1);
 	}
-	return QVariant();
+	return {};
 }
 
 void
@@ -177,17 +174,8 @@ TableModel::TimerHit()
 	if (playing_row_ >= songs_.size())
 		return;
 	
-	Column c;
-	
-	if (app_->UpdatePlayingSongPosition(-1) == UpdateTableRange::OneColumn)
-		c = Column::PlayingAt;
-	else
-		c = Column::Duration;
-	
-	QModelIndex top_left = createIndex(playing_row_, int(c));
-	QModelIndex bottom_right = createIndex(playing_row_, int(Column::PlayingAt));
-	
-	emit dataChanged(top_left, bottom_right, {Qt::DisplayRole});
+	app_->UpdatePlayingSongPosition(-1);
+	UpdateRange(playing_row_, Column::Duration, playing_row_, Column::Duration);
 }
 
 void
@@ -203,8 +191,8 @@ TableModel::UpdateRange(int row1, Column c1, int row2, Column c2)
 		last = row2;
 	}
 	
-	QModelIndex top_left = createIndex(first, int(c1));
-	QModelIndex bottom_right = createIndex(last, int(c2));
+	const QModelIndex top_left = createIndex(first, int(c1));
+	const QModelIndex bottom_right = createIndex(last, int(c2));
 	emit dataChanged(top_left, bottom_right, {Qt::DisplayRole});
 }
 
