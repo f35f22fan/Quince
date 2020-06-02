@@ -47,6 +47,7 @@ struct FileID {
 
 struct File {
 	QString name;
+	QString dir_path;
 	i64 size = -1;
 	FileType type_ = FileType::Unknown;
 	FileID id;

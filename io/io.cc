@@ -2,6 +2,9 @@
 
 #include "../err.hpp"
 
+#include <QDir>
+#include <QFileInfo>
+
 namespace io {
 
 bool
@@ -9,6 +12,47 @@ FileExists(const char *path)
 {
 	struct stat st;
 	return lstat(path, &st) == 0;
+}
+
+io::Err
+FileFromPath(io::File &file, const QString &full_path)
+{
+	struct stat st;
+	auto ba = full_path.toLocal8Bit();
+	
+	if (lstat(ba.data(), &st) == -1)
+		return MapPosixError(errno);
+	
+	QFileInfo info(full_path);
+	const QString parent_dir = info.dir().absolutePath();
+	FillIn(file, st, parent_dir, info.fileName());
+	
+	return io::Err::Ok;
+}
+
+void
+FillIn(io::File &file, const struct stat &st, const QString &dir_path, const QString  &name)
+{
+	using io::FileType;
+	file.name = name;
+	file.dir_path = dir_path;
+	file.size = st.st_size;
+	file.id = io::FileID {
+		.device_id = st.st_dev,
+		.inode_number = st.st_ino
+	};
+	
+	switch (st.st_mode & S_IFMT)
+	{
+	case S_IFREG: file.type_ = FileType::Regular; break;
+	case S_IFDIR: file.type_ = FileType::Dir; break;
+	case S_IFLNK: file.type_ = FileType::Symlink; break;
+	case S_IFBLK: file.type_ = FileType::Block; break;
+	case S_IFCHR: file.type_ = FileType::Char; break;
+	case S_IFIFO: file.type_ = FileType::Pipe; break;
+	case S_IFSOCK: file.type_ = FileType::Socket; break;
+	default: file.type_ = FileType::Unknown;
+	}
 }
 
 QStringRef
@@ -56,26 +100,17 @@ ListFiles(const QString &full_dir_path, QVector<io::File> &vec,
 		dir_path.append('/');
 	
 	struct stat st;
-	int count = 0;
 	const bool list_hidden_files = options & u8(io::ListOptions::HiddenFiles);
-	bool check = true;
 	const QChar DotChar('.');
 	
 	while ((entry = readdir(dp)))
 	{
 		QString name(entry->d_name);
 		
-		if (name.startsWith(DotChar))
+		if (!list_hidden_files && name.startsWith(DotChar))
 		{
-			if (!list_hidden_files)
+			if (name == QLatin1String(".") || name == QLatin1String(".."))
 				continue;
-			
-			if (check && (name == "." || name == ".."))
-			{
-				count++;
-				check = count < 2;
-				continue;
-			}
 		}
 		
 		if (ff != nullptr && !ff(dir_path, name))
@@ -92,26 +127,7 @@ ListFiles(const QString &full_dir_path, QVector<io::File> &vec,
 		}
 		
 		io::File file;
-		using io::FileType;
-		file.name = name;
-		file.size = st.st_size;
-		file.id = io::FileID {
-			.device_id = st.st_dev,
-			.inode_number = st.st_ino
-		};
-		
-		switch (st.st_mode & S_IFMT)
-		{
-		case S_IFREG: file.type_ = FileType::Regular; break;
-		case S_IFDIR: file.type_ = FileType::Dir; break;
-		case S_IFLNK: file.type_ = FileType::Symlink; break;
-		case S_IFBLK: file.type_ = FileType::Block; break;
-		case S_IFCHR: file.type_ = FileType::Char; break;
-		case S_IFIFO: file.type_ = FileType::Pipe; break;
-		case S_IFSOCK: file.type_ = FileType::Socket; break;
-		default: file.type_ = FileType::Unknown;
-		}
-		
+		FillIn(file, st, dir_path, name);
 		vec.append(file);
 	}
 	

@@ -14,6 +14,9 @@ namespace quince {
 class Song {
 public:
 	
+	const QString& dir_path() const { return dir_path_; }
+	void dir_path(const QString  &s) { dir_path_ = s; }
+	
 	const QString& display_name() const { return display_name_; }
 	void dispay_name(const QString &s) { display_name_ = s; }
 	
@@ -24,7 +27,7 @@ public:
 	void uri(const QString &s) { uri_ = s; }
 	
 	static Song*
-	FromFile(const io::File &file, const QString &dir_path);
+	FromFile(const io::File &file);
 	
 	bool
 	is_paused() const { return state_ == GST_STATE_PAUSED; }
@@ -46,6 +49,7 @@ private:
 	i64 playing_at_ = -1;
 	QString display_name_;
 	QString uri_;
+	QString dir_path_;
 	audio::Meta meta_ = {};
 };
 

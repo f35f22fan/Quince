@@ -21,6 +21,12 @@ typedef bool (*FilterFunc)(const QString &dir_path, const QString &name);
 bool
 FileExists(const char *path);
 
+io::Err
+FileFromPath(File &file, const QString &full_path);
+
+void
+FillIn(io::File &file, const struct stat &st, const QString &dir_path, const QString  &name);
+
 QStringRef
 GetFilenameExtension(const QString &name);
 

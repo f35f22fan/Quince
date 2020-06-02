@@ -49,9 +49,9 @@ SliderPane::CreateGui()
 }
 
 void
-SliderPane::DisplayPlaylistDuration(Playlist *playlist)
+SliderPane::DisplayDuration(Playlist *playlist)
 {
-	CHECK_PTR_RET_VOID(playlist);
+	CHECK_PTR_VOID(playlist);
 	QVector<Song*> &songs = playlist->table_model()->songs();
 	i64 total = 0;
 	i32 song_count = 0;
@@ -93,7 +93,7 @@ SliderPane::SetCurrentSong(Song *song)
 void
 SliderPane::SetLabelValue(QLabel *label, i64 t)
 {
-	CHECK_PTR_RET_VOID(label);
+	CHECK_PTR_VOID(label);
 	
 	if (t <= 0) {
 		label->setText(QLatin1String("0:00"));

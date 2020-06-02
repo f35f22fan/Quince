@@ -5,7 +5,7 @@
 namespace quince {
 
 Song*
-Song::FromFile(const io::File &file, const QString &dir_path)
+Song::FromFile(const io::File &file)
 {
 	audio::Codec audio_codec = audio::Codec::Unknown;
 	QString lower = file.name.toLower();
@@ -25,7 +25,7 @@ Song::FromFile(const io::File &file, const QString &dir_path)
 	audio::Meta &meta = p->meta();
 	meta.audio_codec(audio_codec);
 	
-	QString uri_path = QLatin1String("file://") + dir_path + file.name;
+	QString uri_path = QLatin1String("file://") + file.dir_path + file.name;
 	p->uri(QUrl(uri_path).toEncoded());
 	
 	return p;

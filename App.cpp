@@ -12,9 +12,15 @@
 #include "Song.hpp"
 
 #include <QBoxLayout>
+#include <QFileDialog>
+#include <QListView>
 #include <QScrollArea>
 #include <QToolBar>
+#include <QTreeView>
 #include <QUrl>
+
+#include <sys/stat.h>
+#include <sys/types.h>
 
 static const char *ICON_NAME_PAUSED = "media-playback-pause";
 static const char *ICON_NAME_PLAY = "media-playback-start";
@@ -205,9 +211,8 @@ App::App(int argc, char *argv[])
 {
 	play_mode_ = audio::PlayMode::StopAtPlaylistEnd;
 	player_ = new GstPlayer(this, argc, argv);
-	CHECK_TRUE_RET_VOID(InitDiscoverer());
-	CHECK_TRUE_RET_VOID(CreateGui());
-	//CHECK_TRUE_RET_VOID(LoadSavedSongData());
+	CHECK_TRUE_VOID(InitDiscoverer());
+	CHECK_TRUE_VOID(CreateGui());
 	setWindowIcon(QIcon(":/resources/Quince.png"));
 	resize(1400, 600);
 }
@@ -229,6 +234,21 @@ App::~App() {
 //	}
 	
 	playlists_.clear();
+}
+
+i32
+App::active_playlist_index() const {
+	
+	if (playlists_.isEmpty())
+		return -1;
+	
+	if (active_playlist_index_ >= playlists_.size())
+		return -1;
+	
+	if (active_playlist_index_ == -1)
+		return playlists_cb_->currentIndex(); // initiate it
+	
+	return active_playlist_index_;
 }
 
 bool
@@ -287,6 +307,104 @@ App::AddAction(QToolBar *tb, const QString &icon_name,
 	return action;
 }
 
+void
+App::AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist)
+{
+	CHECK_PTR_VOID(playlist);
+	gui::TableModel *model = playlist->table_model();
+	QVector<Song*> &songs = model->songs();
+	i32 first = songs.size();
+	i32 added = 0;
+	
+	for (io::File &file: files)
+	{
+		auto *song = Song::FromFile(file);
+		
+		if (song != nullptr)
+		{
+			added++;
+			songs.append(song);
+		}
+	}
+	
+	if (added == 0)
+		return;
+	
+	AddBatch(songs);
+	const i32 last = first + added - 1;
+	model->SignalRowsInserted(first, last);
+}
+
+void
+App::AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist)
+{
+	CHECK_PTR_VOID(playlist);
+	QString dir_path = dp;
+	
+	if (!dir_path.endsWith('/'))
+		dir_path.append('/');
+	QVector<io::File> files;
+	
+	if (io::ListFiles(dir_path, files, 0, io::IsSongExtension) != io::Err::Ok) {
+		mtl_trace();
+		return;
+	}
+	
+	AddFilesToPlaylist(files, playlist);
+}
+
+void
+App::AskAddSongFilesToPlaylist()
+{
+	QFileDialog box;
+// ==> Multi-file selection workaround
+	box.setFileMode(QFileDialog::Directory);
+	box.setOption(QFileDialog::DontUseNativeDialog, true);
+	
+	// Try to select multiple files and folders at the same time in QFileDialog
+	QListView *l = box.findChild<QListView*>("listView");
+	if (l)
+		l->setSelectionMode(QAbstractItemView::MultiSelection);
+
+	QTreeView *t = box.findChild<QTreeView*>();
+	if (t)
+		t->setSelectionMode(QAbstractItemView::MultiSelection);
+// <== Multi-file selection workaround
+	
+	if (!box.exec())
+	{
+		mtl_trace();
+		return;
+	}
+	
+	gui::Playlist *playlist = GetActivePlaylist();
+	CHECK_PTR_VOID(playlist);
+	const QStringList filenames = box.selectedFiles();
+	struct stat st;
+	QVector<io::File> files;
+	
+	for (auto next: filenames) {
+		auto ba = next.toLocal8Bit();
+		
+		if (lstat(ba.data(), &st) == 0) {
+			if (S_ISDIR(st.st_mode)) {
+				AddFolderToPlaylist(next, playlist);
+			} else {
+				files.clear();
+				io::File file;
+				
+				if (io::FileFromPath(file, next) == io::Err::Ok)
+				{
+					files.append(file);
+					AddFilesToPlaylist(files, playlist);
+				}
+			}
+		}
+	}
+	
+	seek_pane_->DisplayDuration(playlist);
+}
+
 bool
 App::CreateGui()
 {
@@ -300,18 +418,18 @@ App::CreateGui()
 	seek_pane_ = new gui::SliderPane(this);
 	layout->addWidget(seek_pane_);
 
-	tab_bar_ = new QTabBar();
-	layout->addWidget(tab_bar_);
-	
 	QWidget *stack_widget = new QWidget(central_widget);
 	playlist_stack_ = new QStackedLayout();
 	stack_widget->setLayout(playlist_stack_);
 	layout->addWidget(stack_widget);
 	
-	auto *playlist = CreatePlaylist("Default");
-	seek_pane_->DisplayPlaylistDuration(playlist);
-	
 	addToolBar(Qt::BottomToolBarArea, CreatePlaylistActionsToolBar());
+	
+	auto *playlist = CreatePlaylist("Default");
+	auto *p2 = CreatePlaylist("Pop");
+	
+	//LoadSavedSongData(playlist);
+	SetActive(playlist);
 	
 	return true;
 }
@@ -323,9 +441,25 @@ App::CreateMediaActionsToolBar()
 	AddAction(tb, "go-previous", actions::MediaPlayPrev);
 	play_pause_action_ = AddAction(tb, ICON_NAME_PLAY,
 		actions::MediaPlayPause);
-	//AddAction(tb, ICON_NAME_PAUSE, actions::MediaPause);
 	AddAction(tb, "media-playback-stop", actions::MediaPlayStop);
 	AddAction(tb, "go-next", actions::MediaPlayNext);
+	
+	QWidget *space = new QWidget();
+	space->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+	space->setVisible(true);
+	tb->addWidget(space);
+	
+	
+	auto *song_entries_label = new QLabel(QLatin1String("Song Entries: "));
+	tb->addWidget(song_entries_label);
+	
+	auto *w = AddAction(tb, "list-add", actions::AddSongFilesToPlaylist);
+	w->setToolTip("Add song files and folders to playlist");
+	
+	tb->addSeparator();
+	w = AddAction(tb, "list-remove", actions::RemoveSongFromPlaylist);
+	w->setToolTip("Remove song from playlist");
+	
 	
 	return tb;
 }
@@ -334,9 +468,19 @@ QToolBar*
 App::CreatePlaylistActionsToolBar()
 {
 	QToolBar *tb = new QToolBar(this);
-	AddAction(tb, "address-book-new", actions::PlaylistNew, "New Playlist");
+	
+	auto *playlists_label = new QLabel(QLatin1String("Playlists: "));
+	tb->addWidget(playlists_label);
+	
+	AddAction(tb, "list-add", actions::PlaylistNew, "New Playlist");
 	AddAction(tb, "list-remove", actions::PlaylistDelete, "Delete Playlist");
 	AddAction(tb, "document-properties", actions::PlaylistRename, "Rename Playlist");
+	
+	playlists_cb_ = new QComboBox();
+	connect(playlists_cb_,
+		QOverload<int>::of(&QComboBox::currentIndexChanged),
+		this, &App::PlaylistComboIndexChanged);
+	tb->addWidget(playlists_cb_); // takes ownership
 	
 	return tb;
 }
@@ -344,9 +488,16 @@ App::CreatePlaylistActionsToolBar()
 gui::Playlist*
 App::CreatePlaylist(const QString &name, int *index)
 {
+	for (gui::Playlist *p : playlists_)
+	{
+		if (p->name() == name)
+			return nullptr;
+	}
+	
 	gui::Playlist *playlist = new gui::Playlist(this, name);
 	int n = playlist_stack_->addWidget(playlist);
-	tab_bar_->addTab(name);
+	//tab_bar_->addTab(name);
+	playlists_cb_->addItem(name);
 	playlists_.append(playlist);
 	
 	if (index != nullptr)
@@ -355,26 +506,26 @@ App::CreatePlaylist(const QString &name, int *index)
 	return playlist;
 }
 
+gui::Playlist*
+App::GetActivePlaylist()
+{
+	i32 index = active_playlist_index();
+	
+	if (index == -1)
+		return nullptr;
+	
+	return playlists_[index];
+}
+
 gui::TableModel*
 App::current_table_model()
 {
-	const int index = tab_bar_->currentIndex();
+	const int index = active_playlist_index();
 	
 	if (index == -1)
-	{
-		mtl_trace();
 		return nullptr;
-	}
 	
-	if (index >= playlists_.size())
-	{
-		mtl_trace();
-		return nullptr;
-	}
-	
-	gui::Playlist *playlist = playlists_[index];
-	
-	return playlist->table_model();
+	return playlists_[index]->table_model();
 }
 
 QVector<Song*>*
@@ -428,6 +579,21 @@ App::GetFirstSongInCurrentPlaylist()
 	return (*songs)[0];
 }
 
+int
+App::GetIndex(gui::Playlist *playlist) const
+{
+	const int count = playlists_.size();
+	
+	for (int i = 0; i < count; i++)
+	{
+		auto *p = playlists_[i];
+		if (p == playlist)
+			return i;
+	}
+	
+	return -1;
+}
+
 void
 App::GotAudioInfo(AudioInfo *info)
 {
@@ -435,7 +601,7 @@ App::GotAudioInfo(AudioInfo *info)
 	auto ds = d.toDurationString().toLocal8Bit();
 	
 	auto *songs = current_playlist_songs();
-	CHECK_PTR_RET_VOID(songs);
+	CHECK_PTR_VOID(songs);
 	
 	for (quince::Song *song: *songs)
 	{
@@ -469,12 +635,10 @@ App::InitDiscoverer()
 	return true;
 }
 
-bool
-App::LoadSavedSongData(gui::TableModel *model)
+void
+App::LoadSavedSongData(gui::Playlist *playlist)
 {
-	CHECK_PTR(model);
-	
-	QVector<Song*> &songs = model->songs();
+	CHECK_PTR_VOID(playlist);
 	
 	const i64 sec = 1000'000'000L;
 	const i64 min = sec * 60L;
@@ -493,21 +657,10 @@ App::LoadSavedSongData(gui::TableModel *model)
 	
 	if (io::ListFiles(dir_path, files, 0, io::IsSongExtension) != io::Err::Ok) {
 		mtl_trace();
-		return false;
+		return;
 	}
 	
-	for (io::File &file: files)
-	{
-		auto *song = Song::FromFile(file, dir_path);
-		
-		if (song != nullptr)
-			songs.append(song);
-	}
-	
-	bool ok = AddBatch(songs);
-	model->SignalRowsInserted(0, songs.size() - 1);
-	
-	return ok;
+	AddFilesToPlaylist(files, playlist);
 }
 
 void
@@ -550,6 +703,13 @@ App::MessageAsyncDone()
 
 GstElement*
 App::play_elem() const { return player_->play_elem(); }
+
+void
+App::PlaylistComboIndexChanged(int index)
+{
+	if (index != -1 && index < playlists_.size())
+		SetActive(playlists_[index]);
+}
 
 void
 App::PlaySong(const audio::Pick direction)
@@ -651,10 +811,8 @@ App::ProcessAction(const QString &action_name)
 		{
 			playing_song = GetFirstSongInCurrentPlaylist();
 			
-			if (playing_song == nullptr) {
-				mtl_trace();
+			if (playing_song == nullptr)
 				return;
-			}
 			
 			song_index = 0;
 		}
@@ -667,6 +825,8 @@ App::ProcessAction(const QString &action_name)
 		PlaySong(audio::Pick::Prev);
 	} else if (action_name == actions::MediaPlayStop) {
 		PlayStop();
+	} else if (action_name == actions::AddSongFilesToPlaylist) {
+		AskAddSongFilesToPlaylist();
 	} else {
 		auto ba = action_name.toLocal8Bit();
 		mtl_trace("Action skipped: \"%s\"", ba.data());
@@ -713,9 +873,17 @@ App::ReachedEndOfStream()
 }
 
 void
+App::SetActive(gui::Playlist *playlist)
+{
+	seek_pane_->DisplayDuration(playlist);
+	const int index = GetIndex(playlist);
+	playlist_stack_->setCurrentIndex(index);
+}
+
+void
 App::UpdatePlayIcon(Song *song)
 {
-	CHECK_PTR_RET_VOID(song);
+	CHECK_PTR_VOID(song);
 	
 	const char *icon_name = song->is_playing() ?
 		ICON_NAME_PAUSED : ICON_NAME_PLAY;

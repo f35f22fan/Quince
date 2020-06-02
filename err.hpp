@@ -84,14 +84,14 @@
 	}\
 }
 
-#define CHECK_TRUE_RET_NULL(x) {\
+#define CHECK_TRUE_NULL(x) {\
 	if (!x) {\
 		mtl_trace();\
 		return nullptr;\
 	}\
 }
 
-#define CHECK_TRUE_RET_VOID(x) {\
+#define CHECK_TRUE_VOID(x) {\
 	if (!x) {\
 		mtl_trace();\
 		return;\
@@ -127,7 +127,7 @@
 	}\
 }
 
-#define CHECK_PTR_RET_VOID(x) {\
+#define CHECK_PTR_VOID(x) {\
 	if (x == nullptr) {\
 		mtl_trace();\
 		return;\

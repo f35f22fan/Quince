@@ -17,7 +17,7 @@ public:
 	virtual ~SliderPane();
 	
 	void
-	DisplayPlaylistDuration(Playlist *playlist);
+	DisplayDuration(Playlist *playlist);
 	
 	bool slider_dragged_by_user() const { return slider_dragged_by_user_; }
 	

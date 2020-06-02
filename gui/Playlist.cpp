@@ -11,7 +11,7 @@
 namespace quince::gui {
 
 Playlist::Playlist(App *app, const QString &name)
-: app_(app)
+: app_(app), name_(name)
 {
 	CreateGui();
 }
@@ -27,7 +27,6 @@ Playlist::CreateGui()
 	table_model_ = new gui::TableModel(app_, this);
 	table_ = new gui::Table();
 	table_->setModel(table_model_);
-	app_->LoadSavedSongData(table_model_);
 	// column widths to be set after setting the model
 	table_->setColumnWidth(i8(Column::Name), 500);
 	table_->setColumnWidth(i8(Column::Duration), 200);
