@@ -8,6 +8,7 @@
 namespace io {
 
 static const mode_t DirPermissions = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+static const mode_t FilePermissions = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
 
 enum class Err : u8 {
 	Ok = 0,

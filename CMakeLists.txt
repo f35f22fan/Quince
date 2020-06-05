@@ -64,6 +64,7 @@ set(src_files
     audio/decl.hxx
     audio/Meta.hpp
     App.cpp App.hpp
+    ByteArray.cpp ByteArray.hpp
     decl.hxx
     Duration.cpp Duration.hpp
     GstPlayer.cpp GstPlayer.hpp

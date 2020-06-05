@@ -57,4 +57,7 @@ MapPosixTypeToLocal(const mode_t mode) {
 	}
 }
 
+io::Err
+WriteToFile(const QString &full_path, const char *data, const i64 size);
+
 }

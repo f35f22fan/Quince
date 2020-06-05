@@ -95,8 +95,7 @@ public:
 	void
 	RemoveSelectedSong();
 	
-	void
-	SavePlaylistsToDisk();
+	bool SavePlaylistsToDisk();
 	
 	void
 	SetActive(gui::Playlist *playlist);
@@ -131,6 +130,7 @@ private:
 	void ProcessAction(const QString &action_name);
 	bool QueryAppConfigPath(QString &path);
 	bool QueryPlaylistsSaveFolder(QString &ret_val);
+	bool SavePlaylist(gui::Playlist *playlist, const QString &dir_path);
 	
 	NO_ASSIGN_COPY_MOVE(App);
 	

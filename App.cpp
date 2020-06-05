@@ -2,6 +2,7 @@
 
 #include "actions.hxx"
 #include "audio.hh"
+#include "ByteArray.hpp"
 #include "Duration.hpp"
 #include "GstPlayer.hpp"
 #include "gui/Playlist.hpp"
@@ -916,13 +917,45 @@ App::RemoveSelectedSong()
 	}
 }
 
-void
+bool
+App::SavePlaylist(gui::Playlist *playlist, const QString &dir_path)
+{
+	quince::ByteArray ba;
+	ba.add_i32(PlaylistCacheVersion);
+	ba.add_string(playlist->name());
+	
+	ba.to(0);
+	std::cout << ba.next_i32() << std::endl;
+	QString s = ba.next_string();
+	auto s_ba = s.toLocal8Bit();
+	mtl_info("\"%s\"", s_ba.data());
+	mtl_info("sizeof size_t: %lu, usize: %lu", sizeof (size_t), sizeof(usize));
+	
+	QString full_path = dir_path + QChar('/') + playlist->name();
+	
+	if (io::WriteToFile(full_path, ba.data(), ba.size()) != io::Err::Ok) {
+		mtl_warn("Error occured writing to file");
+		return false;
+	}
+	
+	return true;
+}
+
+bool
 App::SavePlaylistsToDisk()
 {
 	QString path;
-	CHECK_TRUE_VOID(QueryPlaylistsSaveFolder(path));
+	CHECK_TRUE(QueryPlaylistsSaveFolder(path));
 	
+	bool ok = true;
 	
+	for (gui::Playlist *p : playlists_)
+	{
+		if (!SavePlaylist(p, path))
+			ok = false; // continue to try to save other playlists
+	}
+	
+	return ok;
 }
 
 void

@@ -5,6 +5,10 @@
 #include <QDir>
 #include <QFileInfo>
 
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 namespace io {
 
 bool
@@ -170,6 +174,40 @@ MapPosixError(int e)
 	case EIO: return Err::IO;
 	default: return Err::Other;
 	}
+}
+
+io::Err
+WriteToFile(const QString &full_path, const char *data, const i64 size)
+{
+	auto path = full_path.toLocal8Bit();
+	const int fd = open(path.data(), O_WRONLY | O_CREAT | O_TRUNC,
+		io::FilePermissions);
+	
+	if (fd == -1)
+		return MapPosixError(errno);
+	
+	isize written = 0;
+	
+	while (written < size) {
+		// ssize_t write(int fd, const void *buf, size_t count);
+		isize ret = write(fd, data + written, size - written);
+		
+		if (ret == -1) {
+			if (errno == EAGAIN)
+				continue;
+			else {
+				io::Err e = MapPosixError(errno);
+				close(fd);
+				return e;
+			}
+		}
+		
+		written += ret;
+	}
+	
+	close(fd);
+	
+	return Err::Ok;
 }
 
 } // io::
