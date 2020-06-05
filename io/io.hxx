@@ -2,8 +2,12 @@
 
 #include "../types.hxx"
 #include <QString>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 namespace io {
+
+static const mode_t DirPermissions = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
 
 enum class Err : u8 {
 	Ok = 0,
@@ -20,8 +24,8 @@ enum class FileType : u8 {
 	Symlink,
 	Socket,
 	Pipe,
-	Block,
-	Char
+	BlockDevice,
+	CharDevice
 };
 
 struct FileID {

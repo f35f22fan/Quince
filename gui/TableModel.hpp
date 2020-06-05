@@ -29,6 +29,9 @@ public:
 	TableModel(App *app, QObject *parent = nullptr);
 	virtual ~TableModel();
 	
+	void BeginRemoveRows(i32 first, i32 last) { beginRemoveRows(QModelIndex(), first, last); }
+	void EndRemoveRows() { endRemoveRows(); }
+	
 	int
 	rowCount(const QModelIndex &parent = QModelIndex()) const override;
 	
@@ -53,7 +56,7 @@ public:
 		return true;
 	}
 	virtual bool removeRows(int row, int count, const QModelIndex &parent) override {
-		mtl_trace();
+		songs_.erase(songs_.begin() + row);
 		return true;
 	}
 	virtual bool removeColumns(int column, int count, const QModelIndex &parent) override {
@@ -64,6 +67,11 @@ public:
 	void
 	SignalRowsInserted(i32 first, i32 last) {
 		emit rowsInserted(QModelIndex(), first, last, {});
+	}
+	
+	void
+	SignalRowsRemoved(i32 first, i32 last) {
+		emit rowsRemoved(QModelIndex(), first, last, {});
 	}
 	
 	QVector<Song*>&

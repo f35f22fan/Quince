@@ -17,6 +17,9 @@
 
 namespace quince {
 
+static const i32 PlaylistCacheVersion = 1;
+static const QString AppConfigName = QLatin1String("QuincePlayer");
+
 struct DiscovererUserParams {
 	GstDiscoverer *discoverer;
 	GMainLoop *loop;
@@ -90,9 +93,15 @@ public:
 	ReachedEndOfStream();
 	
 	void
+	RemoveSelectedSong();
+	
+	void
+	SavePlaylistsToDisk();
+	
+	void
 	SetActive(gui::Playlist *playlist);
 	
-	gui::SliderPane*
+	gui::SeekPane*
 	slider_pane() const { return seek_pane_; }
 	
 	void
@@ -120,10 +129,12 @@ private:
 		const audio::Pick pick);
 	
 	void ProcessAction(const QString &action_name);
+	bool QueryAppConfigPath(QString &path);
+	bool QueryPlaylistsSaveFolder(QString &ret_val);
 	
 	NO_ASSIGN_COPY_MOVE(App);
 	
-	gui::SliderPane *seek_pane_ = nullptr;
+	gui::SeekPane *seek_pane_ = nullptr;
 	GstPlayer *player_ = nullptr;
 	DiscovererUserParams user_params_ = {nullptr, nullptr, nullptr};
 	QAction *play_pause_action_ = nullptr;

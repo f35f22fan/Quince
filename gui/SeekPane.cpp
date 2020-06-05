@@ -1,4 +1,4 @@
-#include "SliderPane.hpp"
+#include "SeekPane.hpp"
 
 #include "../App.hpp"
 #include "../audio.hh"
@@ -15,18 +15,18 @@ const i64 NS_MS_GAP = 1000000L;
 
 namespace quince::gui {
 
-SliderPane::SliderPane(App *app) : app_(app),
+SeekPane::SeekPane(App *app) : app_(app),
 	QWidget(app)
 {
 	CreateGui();
 }
 
-SliderPane::~SliderPane() {
+SeekPane::~SeekPane() {
 	
 }
 
 void
-SliderPane::CreateGui()
+SeekPane::CreateGui()
 {
 	QBoxLayout *layout = new QBoxLayout(QBoxLayout::LeftToRight);
 	setLayout(layout);
@@ -36,9 +36,9 @@ SliderPane::CreateGui()
 	
 	slider_ = new QSlider(Qt::Horizontal, this);
 	slider_->setMinimum(0);
-	connect(slider_, &QSlider::valueChanged, this, &SliderPane::SliderValueChanged);
-	connect(slider_, &QSlider::sliderPressed, this, &SliderPane::SliderPressed);
-	connect(slider_, &QSlider::sliderReleased, this, &SliderPane::SliderReleased);
+	connect(slider_, &QSlider::valueChanged, this, &SeekPane::SliderValueChanged);
+	connect(slider_, &QSlider::sliderPressed, this, &SeekPane::SliderPressed);
+	connect(slider_, &QSlider::sliderReleased, this, &SeekPane::SliderReleased);
 	layout->addWidget(slider_);
 	
 	duration_label_ = new QLabel(this);
@@ -49,34 +49,22 @@ SliderPane::CreateGui()
 }
 
 void
-SliderPane::DisplayDuration(Playlist *playlist)
+SeekPane::SetActive(gui::Playlist *playlist)
 {
 	CHECK_PTR_VOID(playlist);
-	QVector<Song*> &songs = playlist->table_model()->songs();
-	i64 total = 0;
-	i32 song_count = 0;
+	UpdatePlaylistDuration(playlist);
 	
-	for (Song *song: songs)
-	{
-		audio::Meta &meta = song->meta();
-		
-		if (meta.is_duration_set())
-		{
-			total += meta.duration();
-			song_count++;
-		}
-	}
+	i32 song_index;
+	Song *song = playlist->GetCurrentSong(&song_index);
 	
-	Duration d = Duration::FromNs(total);
-	QString s = QString(('[')).append(QString::number(song_count))
-	.append(" tracks, ")
-	.append(d.toDurationString())
-	.append(']');
-	playlist_duration_->setText(s);
+	i64 new_pos = (song == nullptr) ? 0 : song->playing_at();
+	slider_->setValue(new_pos / NS_MS_GAP);
+	SetLabelValue(position_label_, new_pos);
+	SetLabelValue(duration_label_, new_pos);
 }
 
 void
-SliderPane::SetCurrentSong(Song *song)
+SeekPane::SetCurrentSong(Song *song)
 {
 	current_song_ = song;
 	
@@ -91,7 +79,7 @@ SliderPane::SetCurrentSong(Song *song)
 }
 
 void
-SliderPane::SetLabelValue(QLabel *label, i64 t)
+SeekPane::SetLabelValue(QLabel *label, i64 t)
 {
 	CHECK_PTR_VOID(label);
 	
@@ -105,14 +93,14 @@ SliderPane::SetLabelValue(QLabel *label, i64 t)
 }
 
 void
-SliderPane::SliderPressed()
+SeekPane::SliderPressed()
 {
 	last_seeked_ = {0, 0};
 	slider_dragged_by_user_ = true;
 }
 
 void
-SliderPane::SliderReleased()
+SeekPane::SliderReleased()
 {
 	i64 pos = i64(slider_->value()) * NS_MS_GAP;
 	app_->player()->SeekTo(pos);
@@ -120,7 +108,7 @@ SliderPane::SliderReleased()
 }
 
 void
-SliderPane::SliderValueChanged(int value)
+SeekPane::SliderValueChanged(int value)
 {
 	if (slider_dragged_by_user_ && current_song_ != nullptr)
 	{
@@ -148,7 +136,34 @@ SliderPane::SliderValueChanged(int value)
 }
 
 void
-SliderPane::UpdatePosition(const i64 new_pos)
+SeekPane::UpdatePlaylistDuration(Playlist *playlist)
+{
+	CHECK_PTR_VOID(playlist);
+	QVector<Song*> &songs = playlist->table_model()->songs();
+	i64 total = 0;
+	i32 song_count = 0;
+	
+	for (Song *song: songs)
+	{
+		audio::Meta &meta = song->meta();
+		
+		if (meta.is_duration_set())
+		{
+			total += meta.duration();
+			song_count++;
+		}
+	}
+	
+	Duration d = Duration::FromNs(total);
+	QString s = QString(('[')).append(QString::number(song_count))
+	.append(" tracks, ")
+	.append(d.toDurationString())
+	.append(']');
+	playlist_duration_->setText(s);
+}
+
+void
+SeekPane::UpdatePosition(const i64 new_pos)
 {
 	SetLabelValue(position_label_, new_pos);
 	

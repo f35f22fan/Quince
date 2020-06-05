@@ -5,7 +5,7 @@
 #include "Duration.hpp"
 #include "GstPlayer.hpp"
 #include "gui/Playlist.hpp"
-#include "gui/SliderPane.hpp"
+#include "gui/SeekPane.hpp"
 #include "gui/Table.hpp"
 #include "gui/TableModel.hpp"
 #include "io/io.hh"
@@ -15,6 +15,7 @@
 #include <QFileDialog>
 #include <QListView>
 #include <QScrollArea>
+#include <QStandardPaths>
 #include <QToolBar>
 #include <QTreeView>
 #include <QUrl>
@@ -217,7 +218,9 @@ App::App(int argc, char *argv[])
 	resize(1400, 600);
 }
 
-App::~App() {
+App::~App()
+{
+	SavePlaylistsToDisk();
 	delete player_;
 	
 	if (user_params_.loop != nullptr) {
@@ -402,7 +405,7 @@ App::AskAddSongFilesToPlaylist()
 		}
 	}
 	
-	seek_pane_->DisplayDuration(playlist);
+	seek_pane_->SetActive(playlist);
 }
 
 bool
@@ -415,7 +418,7 @@ App::CreateGui()
 	central_widget->setLayout(layout);
 	setCentralWidget(central_widget);
 	
-	seek_pane_ = new gui::SliderPane(this);
+	seek_pane_ = new gui::SeekPane(this);
 	layout->addWidget(seek_pane_);
 
 	QWidget *stack_widget = new QWidget(central_widget);
@@ -827,10 +830,38 @@ App::ProcessAction(const QString &action_name)
 		PlayStop();
 	} else if (action_name == actions::AddSongFilesToPlaylist) {
 		AskAddSongFilesToPlaylist();
+	} else if (action_name == actions::RemoveSongFromPlaylist) {
+		RemoveSelectedSong();
 	} else {
 		auto ba = action_name.toLocal8Bit();
 		mtl_trace("Action skipped: \"%s\"", ba.data());
 	}
+}
+
+bool
+App::QueryAppConfigPath(QString &path)
+{
+	QString config_path = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
+	
+	if (!config_path.endsWith('/'))
+		config_path.append('/');
+	
+	CHECK_TRUE(io::EnsureDir(config_path, AppConfigName));
+	path = config_path + AppConfigName;
+	
+	return true;
+}
+
+bool
+App::QueryPlaylistsSaveFolder(QString &ret_val)
+{
+	QString app_config_path;
+	CHECK_TRUE(QueryAppConfigPath(app_config_path));
+	const QString subdir_name = QLatin1String("/Playlists");
+	CHECK_TRUE(io::EnsureDir(app_config_path, subdir_name));
+	ret_val = app_config_path + subdir_name;
+	
+	return true;
 }
 
 void
@@ -873,9 +904,31 @@ App::ReachedEndOfStream()
 }
 
 void
+App::RemoveSelectedSong()
+{
+	gui::Playlist *playlist = GetActivePlaylist();
+	CHECK_PTR_VOID(playlist);
+	const i32 index = playlist->RemoveSelectedSong();
+	
+	if (index != -1)
+	{
+		seek_pane_->UpdatePlaylistDuration(playlist);
+	}
+}
+
+void
+App::SavePlaylistsToDisk()
+{
+	QString path;
+	CHECK_TRUE_VOID(QueryPlaylistsSaveFolder(path));
+	
+	
+}
+
+void
 App::SetActive(gui::Playlist *playlist)
 {
-	seek_pane_->DisplayDuration(playlist);
+	seek_pane_->SetActive(playlist);
 	const int index = GetIndex(playlist);
 	playlist_stack_->setCurrentIndex(index);
 }

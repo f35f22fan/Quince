@@ -11,8 +11,16 @@
 
 namespace quince {
 
+enum class SongBits: u8 {
+	None = 0,
+	MarkForDeletion = 1,
+};
+
 class Song {
 public:
+	
+	u8&
+	bits() { return bits_; }
 	
 	const QString& dir_path() const { return dir_path_; }
 	void dir_path(const QString  &s) { dir_path_ = s; }
@@ -51,6 +59,7 @@ private:
 	QString uri_;
 	QString dir_path_;
 	audio::Meta meta_ = {};
+	u8 bits_ = 0;
 };
 
 }

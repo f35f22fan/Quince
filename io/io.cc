@@ -8,10 +8,45 @@
 namespace io {
 
 bool
-FileExists(const char *path)
+EnsureDir(const QString &dir_path, const QString &subdir)
+{
+	auto d = dir_path;
+	
+	if (!d.endsWith('/'))
+		d.append('/');
+	
+	d.append(subdir);
+	
+	auto ba = d.toLocal8Bit();
+	FileType ft;
+	
+	if (FileExists(ba.data(), &ft))
+	{
+		if (ft != FileType::Dir)
+		{
+			if (remove(ba.data()) == 0)
+				return mkdir(ba.data(), DirPermissions) == 0;
+			return false;
+		}
+		
+		return true;
+	}
+	
+	return mkdir(ba.data(), DirPermissions) == 0;
+}
+
+bool
+FileExists(const char *path, FileType *file_type)
 {
 	struct stat st;
-	return lstat(path, &st) == 0;
+	
+	if (lstat(path, &st) != 0)
+		return false;
+	
+	if (file_type != nullptr)
+		*file_type = MapPosixTypeToLocal(st.st_mode);
+	
+	return true;
 }
 
 io::Err
@@ -37,22 +72,11 @@ FillIn(io::File &file, const struct stat &st, const QString &dir_path, const QSt
 	file.name = name;
 	file.dir_path = dir_path;
 	file.size = st.st_size;
+	file.type_ = MapPosixTypeToLocal(st.st_mode);
 	file.id = io::FileID {
 		.device_id = st.st_dev,
 		.inode_number = st.st_ino
 	};
-	
-	switch (st.st_mode & S_IFMT)
-	{
-	case S_IFREG: file.type_ = FileType::Regular; break;
-	case S_IFDIR: file.type_ = FileType::Dir; break;
-	case S_IFLNK: file.type_ = FileType::Symlink; break;
-	case S_IFBLK: file.type_ = FileType::Block; break;
-	case S_IFCHR: file.type_ = FileType::Char; break;
-	case S_IFIFO: file.type_ = FileType::Pipe; break;
-	case S_IFSOCK: file.type_ = FileType::Socket; break;
-	default: file.type_ = FileType::Unknown;
-	}
 }
 
 QStringRef

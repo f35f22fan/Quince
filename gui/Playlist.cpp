@@ -91,4 +91,45 @@ Playlist::PlaylistDoubleClicked(QModelIndex index)
 		last_playing, gui::Column::Duration);
 }
 
+i32
+Playlist::RemoveSelectedSong()
+{
+	auto list = table_->selectionModel()->selectedRows();
+	
+	if (list.isEmpty())
+		return 0;
+	
+	QVector<Song*> &songs = table_model_->songs();
+	
+	for (auto &next: list)
+	{
+		int row = next.row();
+		
+		if (row < 0 || row >= songs.size()) {
+			mtl_trace("%d", row);
+			continue;
+		}
+		
+		u8 &bits = songs[row]->bits();
+		bits |= u8(SongBits::MarkForDeletion);
+	}
+	
+	i32 count = 0;
+	for (i32 i = songs.size() - 1; i >= 0; i--)
+	{
+		auto *song = songs[i];
+		
+		if (song->bits() & u8(SongBits::MarkForDeletion))
+		{
+			//songs.erase(songs.begin() + i);
+			table_model_->BeginRemoveRows(i, i + 1);
+			table_model_->removeRows(i, 1, QModelIndex());
+			table_model_->EndRemoveRows();
+			count++;
+		}
+	}
+
+	return count;
+}
+
 }

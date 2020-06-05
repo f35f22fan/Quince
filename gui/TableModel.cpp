@@ -5,7 +5,7 @@
 #include "../audio/Meta.hpp"
 #include "../Duration.hpp"
 #include "../Song.hpp"
-#include "SliderPane.hpp"
+#include "SeekPane.hpp"
 
 #include <QFont>
 #include <QTime>

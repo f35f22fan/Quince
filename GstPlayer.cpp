@@ -2,7 +2,7 @@
 
 #include "App.hpp"
 #include "Song.hpp"
-#include "gui/SliderPane.hpp"
+#include "gui/SeekPane.hpp"
 
 #include <QUrl>
 

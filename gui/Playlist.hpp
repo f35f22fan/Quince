@@ -24,6 +24,8 @@ public:
 	void
 	PlaylistDoubleClicked(QModelIndex index);
 	
+	i32 RemoveSelectedSong(); // return num rows removed
+	
 	Table* table() const { return table_; }
 	TableModel* table_model() const { return table_model_; }
 	

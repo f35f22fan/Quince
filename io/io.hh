@@ -19,7 +19,10 @@ namespace io {
 typedef bool (*FilterFunc)(const QString &dir_path, const QString &name);
 
 bool
-FileExists(const char *path);
+EnsureDir(const QString &dir_path, const QString &subdir);
+
+bool
+FileExists(const char *path, FileType *file_type = nullptr);
 
 io::Err
 FileFromPath(File &file, const QString &full_path);
@@ -39,5 +42,19 @@ ListFiles(const QString &full_dir_path, QVector<io::File> &vec,
 
 io::Err
 MapPosixError(int e);
+
+inline FileType
+MapPosixTypeToLocal(const mode_t mode) {
+	switch (mode & S_IFMT) {
+	case S_IFREG: return FileType::Regular;
+	case S_IFDIR: return FileType::Dir;
+	case S_IFLNK: return FileType::Symlink;
+	case S_IFBLK: return FileType::BlockDevice;
+	case S_IFCHR: return FileType::CharDevice;
+	case S_IFIFO: return FileType::Pipe;
+	case S_IFSOCK: return FileType::Socket;
+	default: return FileType::Unknown;
+	}
+}
 
 }

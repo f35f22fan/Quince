@@ -10,23 +10,20 @@
 
 namespace quince::gui {
 
-class SliderPane : public QWidget {
+class SeekPane : public QWidget {
 public:
+	SeekPane(App *app);
+	virtual ~SeekPane();
 	
-	SliderPane(App *app);
-	virtual ~SliderPane();
-	
-	void
-	DisplayDuration(Playlist *playlist);
-	
-	bool slider_dragged_by_user() const { return slider_dragged_by_user_; }
-	
+	void UpdatePlaylistDuration(Playlist *playlist);
+	void SetActive(gui::Playlist *playlist);
 	void SetCurrentSong(Song *song);
+	bool slider_dragged_by_user() const { return slider_dragged_by_user_; }
 	void SliderValueChanged(int value);
 	void UpdatePosition(const i64 new_pos);
 	
 private:
-	NO_ASSIGN_COPY_MOVE(SliderPane);
+	NO_ASSIGN_COPY_MOVE(SeekPane);
 	
 	void CreateGui();
 	void SetLabelValue(QLabel *label, i64 time);
