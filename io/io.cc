@@ -1,6 +1,7 @@
 #include "io.hh"
 
 #include "../err.hpp"
+#include "../ByteArray.hpp"
 
 #include <QDir>
 #include <QFileInfo>
@@ -112,6 +113,42 @@ IsSongExtension(const QString &dir_path, const QString &filename)
 }
 
 io::Err
+ListFileNames(const QString &full_dir_path, QVector<QString> &vec)
+{
+	struct dirent *entry;
+	auto dir_path_ba = full_dir_path.toLocal8Bit();
+	DIR *dp = opendir(dir_path_ba.data());
+	
+	if (dp == NULL)
+		return MapPosixError(errno);
+	
+	QString dir_path = full_dir_path;
+	
+	if (!dir_path.endsWith('/'))
+		dir_path.append('/');
+	
+	struct stat st;
+	const QChar DotChar('.');
+	
+	while ((entry = readdir(dp)))
+	{
+		QString name(entry->d_name);
+		
+		if (name.startsWith(DotChar))
+		{
+			if (name == QLatin1String(".") || name == QLatin1String(".."))
+				continue;
+		}
+		
+		vec.append(name);
+	}
+	
+	closedir(dp);
+	
+	return Err::Ok;
+}
+
+io::Err
 ListFiles(const QString &full_dir_path, QVector<io::File> &vec,
 	const u8 options, FilterFunc ff)
 {
@@ -177,6 +214,43 @@ MapPosixError(int e)
 }
 
 io::Err
+ReadFile(const QString &full_path, quince::ByteArray &buffer)
+{
+	struct stat st;
+	auto path = full_path.toLocal8Bit();
+	
+	if (lstat(path.data(), &st) != 0)
+		return MapPosixError(errno);
+	
+	buffer.alloc(st.st_size);
+	char *buf = buffer.data();
+	const int fd = open(path.data(), O_RDONLY);
+	
+	if (fd == -1)
+		return MapPosixError(errno);
+	
+	usize so_far = 0;
+	
+	while (so_far < st.st_size) {
+		isize ret = read(fd, buf + so_far, st.st_size - so_far);
+		
+		if (ret == -1) {
+			if (errno == EAGAIN)
+				continue;
+			io::Err e = MapPosixError(errno);
+			close(fd);
+			return e;
+		}
+		
+		so_far += ret;
+	}
+	
+	close(fd);
+	
+	return Err::Ok;
+}
+
+io::Err
 WriteToFile(const QString &full_path, const char *data, const i64 size)
 {
 	auto path = full_path.toLocal8Bit();
@@ -195,11 +269,9 @@ WriteToFile(const QString &full_path, const char *data, const i64 size)
 		if (ret == -1) {
 			if (errno == EAGAIN)
 				continue;
-			else {
-				io::Err e = MapPosixError(errno);
-				close(fd);
-				return e;
-			}
+			io::Err e = MapPosixError(errno);
+			close(fd);
+			return e;
 		}
 		
 		written += ret;

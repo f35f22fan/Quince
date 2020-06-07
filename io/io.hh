@@ -1,6 +1,7 @@
 #pragma once
 
 #include "io.hxx"
+#include "../decl.hxx"
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -37,6 +38,9 @@ bool
 IsSongExtension(const QString &dir_path, const QString &filename);
 
 io::Err
+ListFileNames(const QString &full_dir_path, QVector<QString> &vec);
+
+io::Err
 ListFiles(const QString &full_dir_path, QVector<io::File> &vec,
 	const u8 options, FilterFunc ff = nullptr);
 
@@ -56,6 +60,9 @@ MapPosixTypeToLocal(const mode_t mode) {
 	default: return FileType::Unknown;
 	}
 }
+
+io::Err
+ReadFile(const QString &full_path, quince::ByteArray &buffer);
 
 io::Err
 WriteToFile(const QString &full_path, const char *data, const i64 size);

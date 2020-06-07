@@ -13,7 +13,10 @@
 #include "Song.hpp"
 
 #include <QBoxLayout>
+#include <QDebug>
+#include <QFile>
 #include <QFileDialog>
+#include <QInputDialog>
 #include <QListView>
 #include <QScrollArea>
 #include <QStandardPaths>
@@ -215,6 +218,7 @@ App::App(int argc, char *argv[])
 	player_ = new GstPlayer(this, argc, argv);
 	CHECK_TRUE_VOID(InitDiscoverer());
 	CHECK_TRUE_VOID(CreateGui());
+	LoadPlaylists();
 	setWindowIcon(QIcon(":/resources/Quince.png"));
 	resize(1400, 600);
 }
@@ -246,13 +250,7 @@ App::active_playlist_index() const {
 	if (playlists_.isEmpty())
 		return -1;
 	
-	if (active_playlist_index_ >= playlists_.size())
-		return -1;
-	
-	if (active_playlist_index_ == -1)
-		return playlists_cb_->currentIndex(); // initiate it
-	
-	return active_playlist_index_;
+	return playlists_cb_->currentIndex(); // initiate it
 }
 
 bool
@@ -409,6 +407,18 @@ App::AskAddSongFilesToPlaylist()
 	seek_pane_->SetActive(playlist);
 }
 
+void
+App::AskNewPlaylist()
+{
+	bool ok;
+	QString text = QInputDialog::getText(this,
+		"New Playlist",
+		QLatin1String("Name:"), QLineEdit::Normal,
+		"", &ok);
+	if (ok && !text.isEmpty())
+		CreatePlaylist(text);
+}
+
 bool
 App::CreateGui()
 {
@@ -428,12 +438,6 @@ App::CreateGui()
 	layout->addWidget(stack_widget);
 	
 	addToolBar(Qt::BottomToolBarArea, CreatePlaylistActionsToolBar());
-	
-	auto *playlist = CreatePlaylist("Default");
-	auto *p2 = CreatePlaylist("Pop");
-	
-	//LoadSavedSongData(playlist);
-	SetActive(playlist);
 	
 	return true;
 }
@@ -499,8 +503,8 @@ App::CreatePlaylist(const QString &name, int *index)
 	}
 	
 	gui::Playlist *playlist = new gui::Playlist(this, name);
+	playlist->id(GenNewPlaylistId());
 	int n = playlist_stack_->addWidget(playlist);
-	//tab_bar_->addTab(name);
 	playlists_cb_->addItem(name);
 	playlists_.append(playlist);
 	
@@ -508,6 +512,19 @@ App::CreatePlaylist(const QString &name, int *index)
 		*index = n;
 	
 	return playlist;
+}
+
+u64
+App::GenNewPlaylistId() const
+{
+	u64 greatest = 0;
+	
+	for (gui::Playlist *p : playlists_) {
+		if (p->id() >= greatest)
+			greatest = p->id() + 1;
+	}
+	
+	return greatest;
 }
 
 gui::Playlist*
@@ -637,6 +654,67 @@ App::InitDiscoverer()
 	g_signal_connect (user_params_.discoverer, "finished", G_CALLBACK (on_finished_cb), &user_params_);
 	
 	return true;
+}
+
+void
+App::LoadPlaylist(const QString &full_path)
+{
+	ByteArray ba;
+	
+	if (io::ReadFile(full_path, ba) != io::Err::Ok)
+	{
+		auto path = full_path.toLocal8Bit();
+		mtl_trace("Couldn't read file: %s", path.data());
+		return;
+	}
+	
+	i32 cache_version = ba.next_i32();
+	
+	if (cache_version != quince::PlaylistCacheVersion)
+	{
+		mtl_info("Cache version %d not supported, need %d",
+			cache_version, quince::PlaylistCacheVersion);
+		return;
+	}
+	
+	QString playlist_name = ba.next_string();
+	const bool is_active = ba.next_u8() == 1;
+	auto *playlist = CreatePlaylist(playlist_name);
+	CHECK_PTR_VOID(playlist);
+	auto &songs = playlist->songs();
+	const i32 song_count = ba.next_i32();
+	
+	for (i32 i = 0; i < song_count; i++)
+	{
+		Song *song = Song::From(ba);
+		
+		if (song != nullptr)
+			songs.append(song);
+	}
+	
+	gui::TableModel *model = playlist->table_model();
+	model->SignalRowsInserted(0, song_count - 1);
+	
+	if (is_active)
+		SetActive(playlist);
+}
+
+void
+App::LoadPlaylists()
+{
+	QString dir_path;
+	CHECK_TRUE_VOID(QueryPlaylistsSaveFolder(dir_path));
+	
+	if (!dir_path.endsWith('/'))
+		dir_path.append('/');
+	
+	QVector<QString> names;
+	
+	if (io::ListFileNames(dir_path, names) != io::Err::Ok)
+		return;
+	
+	for (const QString &filename: names)
+		LoadPlaylist(dir_path + filename);
 }
 
 void
@@ -833,6 +911,8 @@ App::ProcessAction(const QString &action_name)
 		AskAddSongFilesToPlaylist();
 	} else if (action_name == actions::RemoveSongFromPlaylist) {
 		RemoveSelectedSong();
+	} else if (action_name == actions::PlaylistNew) {
+		AskNewPlaylist();
 	} else {
 		auto ba = action_name.toLocal8Bit();
 		mtl_trace("Action skipped: \"%s\"", ba.data());
@@ -917,21 +997,48 @@ App::RemoveSelectedSong()
 	}
 }
 
+void
+App::SaveLastPlaylistState(const i32 index)
+{
+	if (index == -1 || index >= playlists_.size())
+		return;
+	
+	gui::Playlist *playlist = playlists_[index];
+	
+	Song *song = playlist->GetCurrentSong(nullptr);
+	
+	if (song != nullptr)
+	{
+		if (song->is_playing())
+			song->state(GST_STATE_PAUSED);
+	}
+	
+}
+
 bool
-App::SavePlaylist(gui::Playlist *playlist, const QString &dir_path)
+App::SavePlaylist(gui::Playlist *playlist, const QString &dir_path,
+const bool is_active)
 {
 	quince::ByteArray ba;
 	ba.add_i32(PlaylistCacheVersion);
 	ba.add_string(playlist->name());
+	ba.add_u8(is_active ? 1 : 0);
+	auto &songs = playlist->songs();
+	const i32 count = songs.size();
+	ba.add_i32(count);
 	
-	ba.to(0);
-	std::cout << ba.next_i32() << std::endl;
-	QString s = ba.next_string();
-	auto s_ba = s.toLocal8Bit();
-	mtl_info("\"%s\"", s_ba.data());
-	mtl_info("sizeof size_t: %lu, usize: %lu", sizeof (size_t), sizeof(usize));
+	for (int i = 0; i < count; i++)
+	{
+		songs[i]->SaveTo(ba);
+	}
 	
-	QString full_path = dir_path + QChar('/') + playlist->name();
+//	ba.to(sizeof(i32));
+//	QString s = ba.next_string();
+//	auto s_ba = s.toLocal8Bit();
+//	mtl_info("Playlist name: \"%s\"", s_ba.data());
+	
+	QString full_path = dir_path + QChar('/')
+		+ QString::number(playlist->id());
 	
 	if (io::WriteToFile(full_path, ba.data(), ba.size()) != io::Err::Ok) {
 		mtl_warn("Error occured writing to file");
@@ -949,10 +1056,12 @@ App::SavePlaylistsToDisk()
 	
 	bool ok = true;
 	
+	auto *active = GetActivePlaylist();
+	
 	for (gui::Playlist *p : playlists_)
 	{
-		if (!SavePlaylist(p, path))
-			ok = false; // continue to try to save other playlists
+		if (!SavePlaylist(p, path, p == active))
+			ok = false; // yet try to save other playlists
 	}
 	
 	return ok;
@@ -961,18 +1070,37 @@ App::SavePlaylistsToDisk()
 void
 App::SetActive(gui::Playlist *playlist)
 {
+	if (last_playlist_index_ != -1)
+		SaveLastPlaylistState(last_playlist_index_);
+	
 	seek_pane_->SetActive(playlist);
 	const int index = GetIndex(playlist);
 	playlist_stack_->setCurrentIndex(index);
+	
+	Song *song = playlist->GetCurrentSong(nullptr);
+	
+	if (song != nullptr)
+	{
+		auto ba = song->display_name().toLocal8Bit();
+		//mtl_info("Song: %s", ba.data());
+		player_->SetSeekAndPause(song);
+	} else {
+		//mtl_info("active song == nullptr");
+	}
+	
+	last_playlist_index_ = index;
 }
 
 void
 App::UpdatePlayIcon(Song *song)
 {
-	CHECK_PTR_VOID(song);
+	const char *icon_name;
 	
-	const char *icon_name = song->is_playing() ?
-		ICON_NAME_PAUSED : ICON_NAME_PLAY;
+	if (song == nullptr) {
+		icon_name = ICON_NAME_PLAY;
+	} else {
+		icon_name = song->is_playing() ? ICON_NAME_PAUSED : ICON_NAME_PLAY;
+	}
 	
 	play_pause_action_->setIcon(QIcon::fromTheme(icon_name));
 }
@@ -982,7 +1110,7 @@ App::UpdatePlayingSongPosition(const i64 pos_is_known)
 {
 	Song *song = GetCurrentSong();
 	
-	if (song == nullptr || !song->is_playing())
+	if (song == nullptr || !song->is_playing_or_paused())
 		return gui::UpdateTableRange::OneColumn;
 	
 	i64 position = -1;

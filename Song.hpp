@@ -3,6 +3,7 @@
 #include "io/io.hh"
 #include "audio.hxx"
 #include "audio/Meta.hpp"
+#include "decl.hxx"
 #include "types.hxx"
 
 #include <gst/gst.h>
@@ -26,13 +27,16 @@ public:
 	void dir_path(const QString  &s) { dir_path_ = s; }
 	
 	const QString& display_name() const { return display_name_; }
-	void dispay_name(const QString &s) { display_name_ = s; }
+	void display_name(const QString &s) { display_name_ = s; }
 	
 	audio::Meta&
 	meta() { return meta_; }
 	
 	const QString& uri() const { return uri_; }
 	void uri(const QString &s) { uri_ = s; }
+	
+	static Song*
+	From(quince::ByteArray &ba);
 	
 	static Song*
 	FromFile(const io::File &file);
@@ -45,6 +49,9 @@ public:
 	
 	bool
 	is_playing_or_paused() const { return is_playing() || is_paused(); }
+	
+	void
+	SaveTo(quince::ByteArray &ba);
 	
 	GstState state() const { return state_; }
 	void state(GstState s) { state_ = s; }

@@ -118,19 +118,23 @@ private:
 	void AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist);
 	void AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist);
 	void AskAddSongFilesToPlaylist();
-	
+	void AskNewPlaylist();
 	bool CreateGui();
 	QToolBar* CreateMediaActionsToolBar();
 	QToolBar* CreatePlaylistActionsToolBar();
 	QTabBar* CreateTabBar();
 	gui::Playlist* CreatePlaylist(const QString &name, int *index = nullptr);
+	u64 GenNewPlaylistId() const;
+	void LoadPlaylist(const QString &full_path);
+	void LoadPlaylists();
 	int PickSong(QVector<Song*> *vec, const int current_song_index,
 		const audio::Pick pick);
 	
 	void ProcessAction(const QString &action_name);
 	bool QueryAppConfigPath(QString &path);
 	bool QueryPlaylistsSaveFolder(QString &ret_val);
-	bool SavePlaylist(gui::Playlist *playlist, const QString &dir_path);
+	void SaveLastPlaylistState(const i32 index);
+	bool SavePlaylist(gui::Playlist *playlist, const QString &dir_path, const bool is_active);
 	
 	NO_ASSIGN_COPY_MOVE(App);
 	
@@ -142,7 +146,7 @@ private:
 	QComboBox *playlists_cb_ = nullptr;
 	QVector<gui::Playlist*> playlists_;
 	QStackedLayout *playlist_stack_ = nullptr;
-	i32 active_playlist_index_ = -1;
+	i32 last_playlist_index_ = -1;
 };
 
 }

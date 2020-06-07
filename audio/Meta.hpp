@@ -8,6 +8,9 @@ class Meta {
 	
 public:
 	
+	Codec
+	audio_codec() const { return audio_codec_; }
+	
 	void
 	audio_codec(const Codec codec) { audio_codec_ = codec; }
 	

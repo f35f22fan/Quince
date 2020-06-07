@@ -15,19 +15,35 @@ public:
 	Playlist(App *app, const QString &name);
 	virtual ~Playlist();
 	
-	void CreateGui();
+	void
+	CreateGui();
 	
-	Song* GetCurrentSong(int *index);
+	Song*
+	GetCurrentSong(int *index);
 	
-	const QString& name() const { return name_; }
+	void
+	id(const i64 n) { id_ = n; }
+	
+	i64
+	id() const { return id_; }
+	
+	const QString&
+	name() const { return name_; }
 	
 	void
 	PlaylistDoubleClicked(QModelIndex index);
 	
-	i32 RemoveSelectedSong(); // return num rows removed
+	i32
+	RemoveSelectedSong(); // returns num rows removed
 	
-	Table* table() const { return table_; }
-	TableModel* table_model() const { return table_model_; }
+	QVector<Song*>&
+	songs();
+	
+	Table*
+	table() const { return table_; }
+	
+	TableModel*
+	table_model() const { return table_model_; }
 	
 private:
 	NO_ASSIGN_COPY_MOVE(Playlist);
@@ -36,5 +52,6 @@ private:
 	QString name_;
 	TableModel *table_model_ = nullptr;
 	Table *table_ = nullptr;
+	u64 id_ = 0;
 };
 }

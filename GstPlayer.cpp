@@ -28,10 +28,49 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 		break;
 	}
 	
-	case GST_MESSAGE_ASYNC_DONE: {
-		app->MessageAsyncDone();
-		break;
+	case GST_MESSAGE_ASYNC_START: {
+		mtl_info("async start");
 	}
+	
+	case GST_MESSAGE_ASYNC_DONE: {
+		GstPlayer *player = app->player();
+		auto &ssp = player->set_seek_and_pause_;
+		if (ssp.pending) {
+			ssp.pending = false;
+			player->SetSeekAndPause2();
+		} else if (ssp.pending2) {
+			ssp.pending2 = false;
+			app->UpdatePlayingSongPosition(ssp.new_pos);
+			app->UpdatePlayIcon(ssp.song);
+		} else {
+			app->MessageAsyncDone();
+		}
+		break;
+	};
+	
+//	case GST_MESSAGE_STATE_CHANGED: {
+//		mtl_info("state changed");
+//	};
+	
+//	case GST_MESSAGE_STEP_DONE: {
+//		mtl_info("Step done");
+//	}
+	
+//	case GST_MESSAGE_SEGMENT_START: {
+//		mtl_info("Segment start");
+//	}
+	
+//	case GST_MESSAGE_SEGMENT_DONE: {
+//		mtl_info("Segment done");
+//	}
+		
+//	case GST_MESSAGE_DURATION: {
+//		mtl_info("Duration");
+//	}
+	
+//	case GST_MESSAGE_REQUEST_STATE: {
+//		mtl_info("request state");
+//	}
 	
 	default: {
 		//mtl_info("other");
@@ -91,6 +130,33 @@ GST_STATE_PLAYING – the element is PLAYING, the GstClock is running and the da
 }
 
 void
+GstPlayer::SetSeekAndPause(Song *song)
+{
+	gst_element_set_state(play_elem_, GST_STATE_NULL);
+	auto ba = song->uri().toLocal8Bit();
+	g_object_set(G_OBJECT(play_elem_), "uri", ba.data(), NULL);
+	
+	set_seek_and_pause_.pending = true;
+	set_seek_and_pause_.song = song;
+	gst_element_set_state(play_elem_, GST_STATE_PAUSED);
+	// now waiting for async_done on the bus to trigger SetSeekAndPause2()
+}
+
+void
+GstPlayer::SetSeekAndPause2()
+{
+	Song *song = set_seek_and_pause_.song;
+	app_->slider_pane()->SetCurrentSong(song);
+	app_->UpdatePlayIcon(song);
+	
+	const i64 new_pos = song->playing_at();
+	//mtl_info("seek to: %ld", song->playing_at());
+	set_seek_and_pause_.pending2 = true;
+	set_seek_and_pause_.new_pos = new_pos;
+	SeekTo(new_pos);
+}
+
+void
 GstPlayer::StopPlaying(Song *song)
 {
 	gst_element_set_state(play_elem_, GST_STATE_NULL);
@@ -106,7 +172,8 @@ GstPlayer::SeekTo(const i64 new_pos)
 	if (gst_element_seek_simple(play_elem_, GST_FORMAT_TIME,
 		GstSeekFlags(flag), new_pos))
 	{
-		app_->UpdatePlayingSongPosition(new_pos);
+		if (!set_seek_and_pause_.pending2)
+			app_->UpdatePlayingSongPosition(new_pos);
 	}
 }
 

@@ -11,7 +11,6 @@ ByteArray::~ByteArray()
 {
 	delete[] data_;
 	data_ = nullptr;
-	heap_size_ = 0;
 }
 
 void
@@ -20,6 +19,7 @@ ByteArray::add(const char *n, const usize size)
 	make_sure(size);
 	memcpy(data_ + at_, n, size);
 	at_ += size;
+	size_ += size;
 }
 
 void
@@ -84,9 +84,20 @@ ByteArray::add_string(const QString &s)
 }
 
 void
+ByteArray::alloc(const usize exact_size)
+{
+	if (data_ != nullptr)
+		mtl_trace();
+	
+	heap_size_ = size_ = exact_size;
+	data_ = new char[exact_size];
+}
+
+void
 ByteArray::next(char *p, const usize sz) {
 	memcpy(p, data_ + at_, sz);
 	at_ += sz;
+	size_ += sz;
 }
 
 i8
@@ -167,20 +178,27 @@ ByteArray::next_string()
 	i32 size = next_i32();
 	auto s = QString::fromLocal8Bit(data_ + at_, size);
 	at_ += size;
+	size_ += size;
 	return s;
 }
 
 void
 ByteArray::make_sure(const usize more_bytes)
 {
-	if (at_ + more_bytes > heap_size_) {
+	const usize new_size = at_ + more_bytes;
+	
+	if (new_size > heap_size_) {
 		if (data_ == nullptr) {
-			heap_size_ = more_bytes * 64;
+			heap_size_ = more_bytes;// * 64;
+			data_ = new char[heap_size_];
 		} else {
+			heap_size_ = new_size * 1.3;
+			char *p = new char[heap_size_];
+			memcpy(p, data_, at_);
 			delete[] data_;
-			heap_size_ *= 1.3;
+			data_ = p;
 		}
-		data_ = new char[heap_size_];
+		
 	}
 }
 

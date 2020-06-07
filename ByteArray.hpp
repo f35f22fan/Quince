@@ -12,6 +12,8 @@ public:
 	ByteArray();
 	virtual ~ByteArray();
 	
+	void alloc(const usize exact_size);
+	
 	void add(const char *n, const usize size);
 	void add_i8(const i8 n);
 	void add_u8(const u8 n);
@@ -25,7 +27,7 @@ public:
 	void add_f64(const double n);
 	void add_string(const QString &s);
 	
-	const char *data() { return data_; }
+	char *data() { return data_; }
 	
 	void next(char *p, const usize sz);
 	i8 next_i8();
@@ -40,13 +42,14 @@ public:
 	double next_f64();
 	QString next_string();
 	
-	usize size() const { return at_; }
+	usize size() const { return size_; }
 	void to(const usize n) { at_ = n; }
 
 private:
 	void make_sure(const usize more_bytes);
 	
 	char *data_ = nullptr;
+	usize size_ = 0;
 	usize heap_size_ = 0;
 	usize at_ = 0;
 };

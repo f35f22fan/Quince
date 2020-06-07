@@ -46,9 +46,10 @@ Playlist::CreateGui()
 Song*
 Playlist::GetCurrentSong(int *index)
 {
-	auto &songs = table_model_->songs();
+	QVector<Song*> &songs = this->songs();
+	const i32 count = songs.size();
 	
-	for (int i = 0; i < songs.size(); i++)
+	for (int i = 0; i < count; i++)
 	{
 		auto *song = songs[i];
 		
@@ -131,5 +132,8 @@ Playlist::RemoveSelectedSong()
 
 	return count;
 }
+
+QVector<Song*>&
+Playlist::songs() { return table_model_->songs(); }
 
 }
