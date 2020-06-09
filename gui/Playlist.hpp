@@ -34,7 +34,7 @@ public:
 	PlaylistDoubleClicked(QModelIndex index);
 	
 	i32
-	RemoveSelectedSong(); // returns num rows removed
+	RemoveSelectedSongs(); // returns num rows removed
 	
 	QVector<Song*>&
 	songs();

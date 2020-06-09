@@ -12,6 +12,7 @@
 #include "io/io.hh"
 #include "Song.hpp"
 
+#include <QApplication>
 #include <QBoxLayout>
 #include <QDebug>
 #include <QFile>
@@ -212,14 +213,26 @@ static void on_finished_cb (GstDiscoverer *discoverer,
 
 namespace quince {
 
-App::App(int argc, char *argv[])
+App::App(int argc, char *argv[]) :
+app_icon_(":/resources/Quince.png")
 {
 	play_mode_ = audio::PlayMode::StopAtPlaylistEnd;
 	player_ = new GstPlayer(this, argc, argv);
 	CHECK_TRUE_VOID(InitDiscoverer());
 	CHECK_TRUE_VOID(CreateGui());
 	LoadPlaylists();
-	setWindowIcon(QIcon(":/resources/Quince.png"));
+	setWindowIcon(app_icon_);
+	
+	if (!QSystemTrayIcon::isSystemTrayAvailable())
+		mtl_info("System tray not available.");
+	
+	QIcon tray_icon(":/resources/Quince48.png");
+	
+	tray_icon_ = new QSystemTrayIcon(tray_icon, this);
+	tray_icon_->setVisible(true);
+	connect(tray_icon_, &QSystemTrayIcon::activated, this,
+		&App::TrayActivated);
+	
 	resize(1400, 600);
 }
 
@@ -250,7 +263,7 @@ App::active_playlist_index() const {
 	if (playlists_.isEmpty())
 		return -1;
 	
-	return playlists_cb_->currentIndex(); // initiate it
+	return playlists_cb_->currentIndex();
 }
 
 bool
@@ -419,6 +432,13 @@ App::AskNewPlaylist()
 		CreatePlaylist(text);
 }
 
+void
+App::closeEvent(QCloseEvent *event)
+{
+	//QApplication::quit();
+	setVisible(false);
+}
+
 bool
 App::CreateGui()
 {
@@ -457,17 +477,20 @@ App::CreateMediaActionsToolBar()
 	space->setVisible(true);
 	tb->addWidget(space);
 	
-	
 	auto *song_entries_label = new QLabel(QLatin1String("Song Entries: "));
 	tb->addWidget(song_entries_label);
 	
 	auto *w = AddAction(tb, "list-add", actions::AddSongFilesToPlaylist);
 	w->setToolTip("Add song files and folders to playlist");
 	
-	tb->addSeparator();
 	w = AddAction(tb, "list-remove", actions::RemoveSongFromPlaylist);
 	w->setToolTip("Remove song from playlist");
 	
+	auto *label = new QLabel("   ");
+	tb->addWidget(label);
+	tb->addSeparator();
+	w = AddAction(tb, "application-exit", actions::QuitApp);
+	w->setToolTip("Quit Application");
 	
 	return tb;
 }
@@ -910,9 +933,11 @@ App::ProcessAction(const QString &action_name)
 	} else if (action_name == actions::AddSongFilesToPlaylist) {
 		AskAddSongFilesToPlaylist();
 	} else if (action_name == actions::RemoveSongFromPlaylist) {
-		RemoveSelectedSong();
+		RemoveSelectedSongs();
 	} else if (action_name == actions::PlaylistNew) {
 		AskNewPlaylist();
+	} else if (action_name == actions::QuitApp) {
+		QApplication::quit();
 	} else {
 		auto ba = action_name.toLocal8Bit();
 		mtl_trace("Action skipped: \"%s\"", ba.data());
@@ -985,13 +1010,13 @@ App::ReachedEndOfStream()
 }
 
 void
-App::RemoveSelectedSong()
+App::RemoveSelectedSongs()
 {
 	gui::Playlist *playlist = GetActivePlaylist();
 	CHECK_PTR_VOID(playlist);
-	const i32 index = playlist->RemoveSelectedSong();
+	const i32 count = playlist->RemoveSelectedSongs();
 	
-	if (index != -1)
+	if (count > 0)
 	{
 		seek_pane_->UpdatePlaylistDuration(playlist);
 	}
@@ -1070,25 +1095,43 @@ App::SavePlaylistsToDisk()
 void
 App::SetActive(gui::Playlist *playlist)
 {
+	// playlists_cb_->setCurrentIndex(index)
+	// triggers this method again, workaround:
+	static bool executing = false;
+	
+	if (executing)
+		return;
+	
+	executing = true;
+	
 	if (last_playlist_index_ != -1)
 		SaveLastPlaylistState(last_playlist_index_);
 	
 	seek_pane_->SetActive(playlist);
 	const int index = GetIndex(playlist);
 	playlist_stack_->setCurrentIndex(index);
-	
+	playlists_cb_->setCurrentIndex(index);
 	Song *song = playlist->GetCurrentSong(nullptr);
 	
 	if (song != nullptr)
-	{
-		auto ba = song->display_name().toLocal8Bit();
-		//mtl_info("Song: %s", ba.data());
 		player_->SetSeekAndPause(song);
-	} else {
-		//mtl_info("active song == nullptr");
-	}
 	
 	last_playlist_index_ = index;
+	
+	executing = false;
+}
+
+void
+App::TrayActivated(QSystemTrayIcon::ActivationReason reason)
+{
+	static bool do_show = !isVisible();
+	setVisible(do_show);
+	
+	if (do_show)
+	{
+		activateWindow();
+		raise();
+	}
 }
 
 void

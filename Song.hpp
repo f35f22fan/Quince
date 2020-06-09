@@ -51,6 +51,17 @@ public:
 	is_playing_or_paused() const { return is_playing() || is_paused(); }
 	
 	void
+	mark_for_deletion(const bool f = true) {
+		if (f)
+			bits_ |= u8(SongBits::MarkForDeletion);
+		else
+			bits_ &= ~u8(SongBits::MarkForDeletion);
+	}
+	
+	bool
+	marked_for_deletion() const { return bits_ & u8(SongBits::MarkForDeletion); }
+	
+	void
 	SaveTo(quince::ByteArray &ba);
 	
 	GstState state() const { return state_; }

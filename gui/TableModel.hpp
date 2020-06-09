@@ -29,9 +29,6 @@ public:
 	TableModel(App *app, QObject *parent = nullptr);
 	virtual ~TableModel();
 	
-	void BeginRemoveRows(i32 first, i32 last) { beginRemoveRows(QModelIndex(), first, last); }
-	void EndRemoveRows() { endRemoveRows(); }
-	
 	int
 	rowCount(const QModelIndex &parent = QModelIndex()) const override;
 	
@@ -56,7 +53,11 @@ public:
 		return true;
 	}
 	virtual bool removeRows(int row, int count, const QModelIndex &parent) override {
-		songs_.erase(songs_.begin() + row);
+		const int first = row;
+		const int last = row + count;
+		beginRemoveRows(QModelIndex(), first, last);
+		songs_.erase(songs_.begin() + first);
+		endRemoveRows();
 		return true;
 	}
 	virtual bool removeColumns(int column, int count, const QModelIndex &parent) override {

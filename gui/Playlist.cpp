@@ -93,7 +93,7 @@ Playlist::PlaylistDoubleClicked(QModelIndex index)
 }
 
 i32
-Playlist::RemoveSelectedSong()
+Playlist::RemoveSelectedSongs()
 {
 	auto list = table_->selectionModel()->selectedRows();
 	
@@ -111,21 +111,18 @@ Playlist::RemoveSelectedSong()
 			continue;
 		}
 		
-		u8 &bits = songs[row]->bits();
-		bits |= u8(SongBits::MarkForDeletion);
+		songs[row]->mark_for_deletion();
 	}
 	
 	i32 count = 0;
 	for (i32 i = songs.size() - 1; i >= 0; i--)
 	{
-		auto *song = songs[i];
+		quince::Song *song = songs[i];
 		
-		if (song->bits() & u8(SongBits::MarkForDeletion))
+		if (song->marked_for_deletion())
 		{
-			//songs.erase(songs.begin() + i);
-			table_model_->BeginRemoveRows(i, i + 1);
+			mtl_info("Deleting index %d", i);
 			table_model_->removeRows(i, 1, QModelIndex());
-			table_model_->EndRemoveRows();
 			count++;
 		}
 	}

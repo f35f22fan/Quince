@@ -13,6 +13,7 @@
 #include <QComboBox>
 #include <QMainWindow>
 #include <QStackedLayout>
+#include <QSystemTrayIcon>
 #include <QVector>
 
 namespace quince {
@@ -93,7 +94,7 @@ public:
 	ReachedEndOfStream();
 	
 	void
-	RemoveSelectedSong();
+	RemoveSelectedSongs();
 	
 	bool SavePlaylistsToDisk();
 	
@@ -104,10 +105,17 @@ public:
 	slider_pane() const { return seek_pane_; }
 	
 	void
+	TrayActivated(QSystemTrayIcon::ActivationReason reason);
+	
+	void
 	UpdatePlayIcon(Song *song);
 	
 	gui::UpdateTableRange
 	UpdatePlayingSongPosition(const i64 pos_is_known);
+	
+protected:
+	void
+	closeEvent(QCloseEvent *event);
 	
 private:
 	
@@ -147,6 +155,9 @@ private:
 	QVector<gui::Playlist*> playlists_;
 	QStackedLayout *playlist_stack_ = nullptr;
 	i32 last_playlist_index_ = -1;
+	QIcon app_icon_;
+	QSystemTrayIcon *tray_icon_ = nullptr;
+	
 };
 
 }
