@@ -65,6 +65,16 @@ Playlist::GetCurrentSong(int *index)
 	return nullptr;
 }
 
+bool
+Playlist::GetFullPath(QString &full_path) const
+{
+	QString dir;
+	CHECK_TRUE(QuerySaveFolder(dir));
+	full_path = dir + QChar('/') + QString::number(id_);
+	
+	return true;
+}
+
 void
 Playlist::PlaylistDoubleClicked(QModelIndex index)
 {
@@ -90,6 +100,27 @@ Playlist::PlaylistDoubleClicked(QModelIndex index)
 	song->playing_at(0);
 	table_model_->UpdateRange(row, gui::Column::Name,
 		last_playing, gui::Column::Duration);
+}
+
+bool
+Playlist::QuerySaveFolder(QString &ret_val)
+{
+	static QString dir_path = QString();
+	
+	if (!dir_path.isEmpty())
+	{
+		ret_val = dir_path;
+		return true;
+	}
+	
+	QString app_config_path;
+	CHECK_TRUE(App::QueryAppConfigPath(app_config_path));
+	const QString subdir_name = QLatin1String("/Playlists");
+	CHECK_TRUE(io::EnsureDir(app_config_path, subdir_name));
+	dir_path = app_config_path + subdir_name;
+	ret_val = dir_path;
+	
+	return true;
 }
 
 i32

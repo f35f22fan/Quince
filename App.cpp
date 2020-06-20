@@ -10,7 +10,10 @@
 #include "gui/Table.hpp"
 #include "gui/TableModel.hpp"
 #include "io/io.hh"
+#include "quince.hh"
 #include "Song.hpp"
+
+#include "shared/global_hotkeys.hpp"
 
 #include <QApplication>
 #include <QBoxLayout>
@@ -18,12 +21,17 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QInputDialog>
+#include <QLibrary>
 #include <QListView>
+#include <QMessageBox>
 #include <QScrollArea>
 #include <QStandardPaths>
 #include <QToolBar>
 #include <QTreeView>
 #include <QUrl>
+
+#include <QDBusConnection>
+#include <QDBusConnectionInterface>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -211,11 +219,36 @@ static void on_finished_cb (GstDiscoverer *discoverer,
 	user_params->loop = nullptr;
 }
 
+static void HotkeyCallback(const QuinceGlobalHotkeysAction action)
+{
+	switch(action)
+	{
+	case QuinceGlobalHotkeysAction::None: break;
+	case QuinceGlobalHotkeysAction::PlayPause: {
+		mtl_info("play/pause");
+		break;
+	}
+	case QuinceGlobalHotkeysAction::LowerVolume: {
+		mtl_info("Lower volume");
+		break;
+	}
+	case QuinceGlobalHotkeysAction::RaiseVolume: {
+		mtl_info("Raise volume");
+		break;
+	}
+	default: {
+		mtl_info("Other action");
+		break;
+	}
+	}
+}
+
 namespace quince {
 
 App::App(int argc, char *argv[]) :
 app_icon_(":/resources/Quince.png")
 {
+	setObjectName(quince_context_.unique);
 	play_mode_ = audio::PlayMode::StopAtPlaylistEnd;
 	player_ = new GstPlayer(this, argc, argv);
 	CHECK_TRUE_VOID(InitDiscoverer());
@@ -233,6 +266,7 @@ app_icon_(":/resources/Quince.png")
 	connect(tray_icon_, &QSystemTrayIcon::activated, this,
 		&App::TrayActivated);
 	
+	RegisterGlobalShortcuts();
 	resize(1400, 600);
 }
 
@@ -421,15 +455,69 @@ App::AskAddSongFilesToPlaylist()
 }
 
 void
+App::AskDeletePlaylist()
+{
+	int index;
+	auto *current = GetActivePlaylist(&index);
+	CHECK_PTR_VOID(current);
+	QString question = QString("Delete playlist <b>") +
+		current->name() + QLatin1String("</b>?");
+	
+	QMessageBox::StandardButton reply = QMessageBox::question(this,
+		"Confirm", question, QMessageBox::Ok | QMessageBox::Cancel);
+	
+	if (reply == QMessageBox::Ok)
+		DeletePlaylist(current, index);
+}
+
+void
 App::AskNewPlaylist()
 {
 	bool ok;
+	
 	QString text = QInputDialog::getText(this,
-		"New Playlist",
-		QLatin1String("Name:"), QLineEdit::Normal,
-		"", &ok);
+		"New Playlist", QLatin1String("Name:"),
+		QLineEdit::Normal, "New Playlist", &ok);
+	
 	if (ok && !text.isEmpty())
 		CreatePlaylist(text);
+}
+
+void
+App::AskRenamePlaylist()
+{
+	int index;
+	auto *current = GetActivePlaylist(&index);
+	CHECK_PTR_VOID(current);
+	QString current_name = current->name();
+	bool ok;
+	
+	QString new_name = QInputDialog::getText(this,
+		"Rename Playlist",
+		QLatin1String("New playlist name:"), QLineEdit::Normal,
+		current_name, &ok);
+	
+	new_name = new_name.trimmed();
+	
+	if (!ok && new_name.isEmpty())
+		return;
+	
+	if (new_name == current_name)
+		return;
+	
+	for (gui::Playlist *p : playlists_)
+	{
+		if (p->name() == new_name) {
+			QMessageBox msgBox;
+			msgBox.setText("A playlist with this name already exists.");
+			msgBox.exec();
+			return;
+		}
+	}
+	
+	current->name(new_name);
+	CHECK_TRUE_VOID(SavePlaylistSimple(current));
+	playlists_cb_->setItemText(index, new_name);
 }
 
 void
@@ -467,10 +555,15 @@ App::CreateMediaActionsToolBar()
 {
 	QToolBar *tb = new QToolBar(this);
 	AddAction(tb, "go-previous", actions::MediaPlayPrev);
+	RegisterGlobalShortcut(actions::MediaPlayPrev, Qt::Key_MediaPrevious);
 	play_pause_action_ = AddAction(tb, ICON_NAME_PLAY,
 		actions::MediaPlayPause);
+	
 	AddAction(tb, "media-playback-stop", actions::MediaPlayStop);
+	RegisterGlobalShortcut(actions::MediaPlayStop, Qt::Key_MediaStop);
+	
 	AddAction(tb, "go-next", actions::MediaPlayNext);
+	RegisterGlobalShortcut(actions::MediaPlayNext, Qt::Key_MediaNext);
 	
 	QWidget *space = new QWidget();
 	space->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -491,27 +584,6 @@ App::CreateMediaActionsToolBar()
 	tb->addSeparator();
 	w = AddAction(tb, "application-exit", actions::QuitApp);
 	w->setToolTip("Quit Application");
-	
-	return tb;
-}
-
-QToolBar*
-App::CreatePlaylistActionsToolBar()
-{
-	QToolBar *tb = new QToolBar(this);
-	
-	auto *playlists_label = new QLabel(QLatin1String("Playlists: "));
-	tb->addWidget(playlists_label);
-	
-	AddAction(tb, "list-add", actions::PlaylistNew, "New Playlist");
-	AddAction(tb, "list-remove", actions::PlaylistDelete, "Delete Playlist");
-	AddAction(tb, "document-properties", actions::PlaylistRename, "Rename Playlist");
-	
-	playlists_cb_ = new QComboBox();
-	connect(playlists_cb_,
-		QOverload<int>::of(&QComboBox::currentIndexChanged),
-		this, &App::PlaylistComboIndexChanged);
-	tb->addWidget(playlists_cb_); // takes ownership
 	
 	return tb;
 }
@@ -537,28 +609,45 @@ App::CreatePlaylist(const QString &name, int *index)
 	return playlist;
 }
 
-u64
-App::GenNewPlaylistId() const
+QToolBar*
+App::CreatePlaylistActionsToolBar()
 {
-	u64 greatest = 0;
+	QToolBar *tb = new QToolBar(this);
 	
-	for (gui::Playlist *p : playlists_) {
-		if (p->id() >= greatest)
-			greatest = p->id() + 1;
-	}
+	auto *playlists_label = new QLabel(QLatin1String("Playlists: "));
+	tb->addWidget(playlists_label);
 	
-	return greatest;
+	AddAction(tb, "list-add", actions::PlaylistNew, "New Playlist");
+	AddAction(tb, "list-remove", actions::PlaylistDelete, "Delete Playlist");
+	AddAction(tb, "document-properties", actions::PlaylistRename, "Rename Playlist");
+	
+	playlists_cb_ = new QComboBox();
+	playlists_cb_->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+	connect(playlists_cb_,
+		QOverload<int>::of(&QComboBox::currentIndexChanged),
+		this, &App::PlaylistComboIndexChanged);
+	tb->addWidget(playlists_cb_); // takes ownership
+	
+	return tb;
 }
 
-gui::Playlist*
-App::GetActivePlaylist()
+bool
+App::DeletePlaylist(gui::Playlist *p, int index)
 {
-	i32 index = active_playlist_index();
+	QString full_path;
+	CHECK_TRUE(p->GetFullPath(full_path));
+	auto ba = full_path.toLocal8Bit();
+	int ret = remove(ba.data());
 	
-	if (index == -1)
-		return nullptr;
+	if (ret != 0)
+		return false;
 	
-	return playlists_[index];
+	playlists_cb_->removeItem(index);
+	playlists_.removeAt(index);
+	playlist_stack_->removeWidget(p);
+	delete p;
+	
+	return true;
 }
 
 gui::TableModel*
@@ -577,12 +666,37 @@ App::current_playlist_songs()
 {
 	auto *model = current_table_model();
 	
-	if (model == nullptr) {
-		mtl_trace();
+	if (model == nullptr)
 		return nullptr;
-	}
 	
 	return &model->songs();
+}
+
+u64
+App::GenNewPlaylistId() const
+{
+	u64 greatest = 0;
+	
+	for (gui::Playlist *p : playlists_) {
+		if (p->id() >= greatest)
+			greatest = p->id() + 1;
+	}
+	
+	return greatest;
+}
+
+gui::Playlist*
+App::GetActivePlaylist(int *indexp)
+{
+	i32 index = active_playlist_index();
+	
+	if (index == -1)
+		return nullptr;
+	
+	if (indexp != nullptr)
+		*indexp = index;
+	
+	return playlists_[index];
 }
 
 Song*
@@ -726,7 +840,7 @@ void
 App::LoadPlaylists()
 {
 	QString dir_path;
-	CHECK_TRUE_VOID(QueryPlaylistsSaveFolder(dir_path));
+	CHECK_TRUE_VOID(gui::Playlist::QuerySaveFolder(dir_path));
 	
 	if (!dir_path.endsWith('/'))
 		dir_path.append('/');
@@ -907,6 +1021,9 @@ App::PlayStop()
 void
 App::ProcessAction(const QString &action_name)
 {
+//	auto ba = action_name.toLocal8Bit();
+//	mtl_info("Incoming action: %s", ba.data());
+	
 	if (action_name == actions::MediaPlayPause)
 	{
 		int song_index = -1;
@@ -938,6 +1055,10 @@ App::ProcessAction(const QString &action_name)
 		AskNewPlaylist();
 	} else if (action_name == actions::QuitApp) {
 		QApplication::quit();
+	} else if (action_name == actions::PlaylistRename) {
+		AskRenamePlaylist();
+	} else if (action_name == actions::PlaylistDelete) {
+		AskDeletePlaylist();
 	} else {
 		auto ba = action_name.toLocal8Bit();
 		mtl_trace("Action skipped: \"%s\"", ba.data());
@@ -947,25 +1068,22 @@ App::ProcessAction(const QString &action_name)
 bool
 App::QueryAppConfigPath(QString &path)
 {
+	static QString dir_path = QString();
+	
+	if (!dir_path.isEmpty())
+	{
+		path = dir_path;
+		return true;
+	}
+	
 	QString config_path = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
 	
 	if (!config_path.endsWith('/'))
 		config_path.append('/');
 	
 	CHECK_TRUE(io::EnsureDir(config_path, AppConfigName));
-	path = config_path + AppConfigName;
-	
-	return true;
-}
-
-bool
-App::QueryPlaylistsSaveFolder(QString &ret_val)
-{
-	QString app_config_path;
-	CHECK_TRUE(QueryAppConfigPath(app_config_path));
-	const QString subdir_name = QLatin1String("/Playlists");
-	CHECK_TRUE(io::EnsureDir(app_config_path, subdir_name));
-	ret_val = app_config_path + subdir_name;
+	dir_path = config_path + AppConfigName;
+	path = dir_path;
 	
 	return true;
 }
@@ -1010,6 +1128,102 @@ App::ReachedEndOfStream()
 }
 
 void
+App::RegisterGlobalShortcut(const QString &action_name,
+	const QKeySequence &key_sequence, QIcon *icon)
+{
+/*
+The action must have a per main component unique action->objectName()
+ to enable cross-application bookeeping. If the action->objectName()
+ is empty this method will do nothing and will return false.
+
+It is mandatory that the action->objectName() doesn't change once
+ the shortcut has been sucessfully registered.
+
+When an action, identified by main component name and objectName(),
+ is assigned a global shortcut for the first time on a KDE
+ installation the assignment will be saved. The shortcut will
+ then be restored every time setGlobalShortcut() is called with
+ loading == Autoloading. */
+	QAction *action = new QAction(action_name, this);
+	
+	if (icon != nullptr)
+		action->setIcon(*icon);
+	
+	action->setProperty("componentName", quince_context_.unique);
+	action->setProperty("componentDisplayName", quince_context_.friendly);
+	
+	action->setObjectName(quince_context_.unique + action_name);
+	connect(action, &QAction::triggered, [=] {ProcessAction(action_name);});
+	
+	if (!KGlobalAccel::isGlobalShortcutAvailable(key_sequence))
+	{
+		if (false) {
+			mtl_info("Global shortcut already registered:");
+			auto list = KGlobalAccel::getGlobalShortcutsByKey(key_sequence);
+			
+			for (KGlobalShortcutInfo &item : list) {
+				qDebug() << "Component F(riendly)name: " << item.componentFriendlyName();
+				qDebug() << "Component U(nique)name: " << item.componentUniqueName();
+				qDebug() << "Context Fname: " << item.contextFriendlyName();
+				qDebug() << "Context Uname: " << item.contextUniqueName();
+				qDebug() << "Fname: " << item.friendlyName();
+				qDebug() << "Uname: " << item.uniqueName() << "\n";
+			}
+		}
+	}
+	
+	KGlobalAccel *ga = KGlobalAccel::self();
+
+	if (!ga->setGlobalShortcut(action, key_sequence)) {
+		auto ba = key_sequence.toString().toLocal8Bit();
+		mtl_warn("Failed to set shortcut [%s]", ba.data());
+	}
+}
+
+void
+App::RegisterGlobalShortcuts()
+{
+/*	Qt::Key_VolumeDown
+	Qt::Key_VolumeMute
+	Qt::Key_VolumeUp
+	Qt::Key_MediaPlay
+	Qt::Key_MediaStop
+	Qt::Key_MediaPrevious
+	Qt::Key_MediaNext
+	Qt::Key_MediaRecord
+	Qt::Key_MediaPause
+	Qt::Key_MediaTogglePlayPause
+	Qt::Key_AudioRewind
+	Qt::Key_AudioForward
+	Qt::Key_AudioRepeat
+	Qt::Key_AudioRandomPlay
+	Qt::Key_Subtitle
+	Qt::Key_AudioCycleTrack
+	Qt::Key_MicVolumeUp
+	Qt::Key_MicVolumeDown
+	Qt::Key_MediaLast
+	Qt::Key_Play */
+
+// componentName (e.g. "kwin") and actionId (e.g. "Kill Window").
+	
+	bool daemon_installed = true;
+	QDBusConnectionInterface *bus = QDBusConnection::sessionBus().interface();
+	const auto ServiceName = QLatin1String("org.kde.kglobalaccel");
+	
+	if (!bus->isServiceRegistered(ServiceName)) {
+		QDBusReply<void> reply = bus->startService(ServiceName);
+		
+		if (!reply.isValid())
+			daemon_installed = false;
+	}
+	
+	CHECK_TRUE_VOID(daemon_installed);
+	
+	QKeySequence play_pause_sequence(Qt::Key_MediaPlay);
+	RegisterGlobalShortcut(actions::MediaPlayPause, play_pause_sequence, &app_icon_);
+}
+
+void
 App::RemoveSelectedSongs()
 {
 	gui::Playlist *playlist = GetActivePlaylist();
@@ -1044,6 +1258,7 @@ bool
 App::SavePlaylist(gui::Playlist *playlist, const QString &dir_path,
 const bool is_active)
 {
+	CHECK_PTR(playlist);
 	quince::ByteArray ba;
 	ba.add_i32(PlaylistCacheVersion);
 	ba.add_string(playlist->name());
@@ -1074,10 +1289,20 @@ const bool is_active)
 }
 
 bool
+App::SavePlaylistSimple(gui::Playlist *playlist)
+{
+	const bool is_active = playlist == GetActivePlaylist();
+	QString dir_path;
+	CHECK_TRUE(gui::Playlist::QuerySaveFolder(dir_path));
+	
+	return SavePlaylist(playlist, dir_path, is_active);
+}
+
+bool
 App::SavePlaylistsToDisk()
 {
 	QString path;
-	CHECK_TRUE(QueryPlaylistsSaveFolder(path));
+	CHECK_TRUE(gui::Playlist::QuerySaveFolder(path));
 	
 	bool ok = true;
 	
@@ -1124,7 +1349,10 @@ App::SetActive(gui::Playlist *playlist)
 void
 App::TrayActivated(QSystemTrayIcon::ActivationReason reason)
 {
-	static bool do_show = !isVisible();
+	// not using do_show = !isVisible() because it returns true even
+	// when the window is not visible.
+	static bool do_show = false;
+	//mtl_info("do_show: %s", do_show ? "true" : "false");
 	setVisible(do_show);
 	
 	if (do_show)
@@ -1132,6 +1360,8 @@ App::TrayActivated(QSystemTrayIcon::ActivationReason reason)
 		activateWindow();
 		raise();
 	}
+	
+	do_show = !do_show;
 }
 
 void

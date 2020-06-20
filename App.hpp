@@ -16,6 +16,8 @@
 #include <QSystemTrayIcon>
 #include <QVector>
 
+#include <kglobalaccel.h>
+
 namespace quince {
 
 static const i32 PlaylistCacheVersion = 1;
@@ -56,7 +58,7 @@ public:
 	GotAudioInfo(AudioInfo *info);
 	
 	gui::Playlist*
-	GetActivePlaylist();
+	GetActivePlaylist(int *indexp = nullptr);
 	
 	Song*
 	GetCurrentSong(int *index = nullptr);
@@ -89,6 +91,9 @@ public:
 	
 	void
 	PlayStop();
+	
+	static
+	bool QueryAppConfigPath(QString &path);
 	
 	void
 	ReachedEndOfStream();
@@ -126,12 +131,15 @@ private:
 	void AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist);
 	void AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist);
 	void AskAddSongFilesToPlaylist();
+	void AskDeletePlaylist();
 	void AskNewPlaylist();
+	void AskRenamePlaylist();
 	bool CreateGui();
 	QToolBar* CreateMediaActionsToolBar();
 	QToolBar* CreatePlaylistActionsToolBar();
 	QTabBar* CreateTabBar();
 	gui::Playlist* CreatePlaylist(const QString &name, int *index = nullptr);
+	bool DeletePlaylist(gui::Playlist *p, int index);
 	u64 GenNewPlaylistId() const;
 	void LoadPlaylist(const QString &full_path);
 	void LoadPlaylists();
@@ -139,10 +147,12 @@ private:
 		const audio::Pick pick);
 	
 	void ProcessAction(const QString &action_name);
-	bool QueryAppConfigPath(QString &path);
-	bool QueryPlaylistsSaveFolder(QString &ret_val);
+	void RegisterGlobalShortcut(const QString &action_name,
+		const QKeySequence &key_sequence, QIcon *icon = nullptr);
+	void RegisterGlobalShortcuts();
 	void SaveLastPlaylistState(const i32 index);
 	bool SavePlaylist(gui::Playlist *playlist, const QString &dir_path, const bool is_active);
+	bool SavePlaylistSimple(gui::Playlist *playlist);
 	
 	NO_ASSIGN_COPY_MOVE(App);
 	
@@ -158,6 +168,15 @@ private:
 	QIcon app_icon_;
 	QSystemTrayIcon *tray_icon_ = nullptr;
 	
+	struct QuinceContext {
+		QString unique;
+		QString friendly;
+		QString program_name;
+	} quince_context_ {
+		.unique = "QuincePlayer",
+		.friendly = "Quince Player",
+		.program_name = "QuinceProgramName"
+	};
 };
 
 }

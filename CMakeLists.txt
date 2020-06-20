@@ -8,8 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Don't use clang because:
 # https://stackoverflow.com/questions/56317596/glm-fails-to-build-when-using-clion
-set(CMAKE_C_COMPILER "/usr/bin/clang")
-set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
+set(CMAKE_C_COMPILER "/usr/bin/clang-10")
+set(CMAKE_CXX_COMPILER "/usr/bin/clang++-10")
 
 # SET (CMAKE_C_COMPILER             "/usr/bin/clang")
 # SET (CMAKE_C_FLAGS                "-Wall -std=c99")
@@ -31,6 +31,7 @@ set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
 # SET (CMAKE_OBJDUMP "/usr/bin/llvm-objdump")
 # SET (CMAKE_RANLIB  "/usr/bin/llvm-ranlib")
 
+#link_directories(${QuincePlayer}/libs)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -47,6 +48,8 @@ include_directories(${FLAC_INCLUDE_DIRS})
 
 pkg_check_modules(OPUSFILE REQUIRED opusfile)
 include_directories(${OPUSFILE_INCLUDE_DIRS})
+
+find_package(KF5GlobalAccel)
 
 find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
 
@@ -75,6 +78,7 @@ set(src_files
     gui/TableModel.cpp gui/TableModel.hpp
     io/io.cc io/io.hh io/io.hxx
     main.cpp err.hpp
+    quince.hh quince.cc
     Song.cpp Song.hpp
     types.hxx)
 
@@ -84,12 +88,13 @@ foreach(f IN LISTS src_files)
 		COMPILE_DEFINITIONS "SRC_FILE_NAME=\"${b}\"")
 endforeach()
 
+add_library(global_hotkeys_x11 SHARED shared/global_hotkeys.hpp shared/global_hotkeys_x11.cpp)
+add_library(global_hotkeys_wl SHARED shared/global_hotkeys.hpp shared/global_hotkeys_wl.cpp)
 
 set(exe_name "app")
-
 add_executable(${exe_name} ${src_files} resources.qrc)
 target_link_libraries(${exe_name} Qt5::Core Qt5::Gui Qt5::Widgets ${dl_lib}
     ${GST_LIBRARIES} rt ${GST_CFLAGS} ${FLAC_LIBRARIES} ${FLAC_CFLAGS}
-    ${OPUSFILE_LIBRARIES} ${OPUSFILE_CFLAGS})
+    ${OPUSFILE_LIBRARIES} ${OPUSFILE_CFLAGS} KF5::GlobalAccel)
 # rt for clock_monotonic_raw
 

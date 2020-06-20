@@ -21,6 +21,9 @@ public:
 	Song*
 	GetCurrentSong(int *index);
 	
+	bool
+	GetFullPath(QString &full_path) const;
+	
 	void
 	id(const i64 n) { id_ = n; }
 	
@@ -31,7 +34,13 @@ public:
 	name() const { return name_; }
 	
 	void
+	name(const QString &s) { name_ = s; }
+	
+	void
 	PlaylistDoubleClicked(QModelIndex index);
+	
+	static bool
+	QuerySaveFolder(QString &ret_val);
 	
 	i32
 	RemoveSelectedSongs(); // returns num rows removed
