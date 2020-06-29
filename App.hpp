@@ -40,25 +40,23 @@ public:
 	App(int argc, char *argv[]);
 	virtual ~App();
 	
-	i32
-	active_playlist_index() const;
-	
-	bool AddBatch(QVector<quince::Song*> &vec);
+	gui::Playlist*
+	active_playlist() const { return active_playlist_; }
 	
 	gui::TableModel*
-	current_table_model();
+	active_table_model();
+	
+	bool
+	AddBatch(QVector<quince::Song*> &vec);
 	
 	QVector<Song*>*
-	current_playlist_songs();
+	active_playlist_songs();
 	
 	int
 	GetIndex(gui::Playlist *playlist) const;
 	
 	void
 	GotAudioInfo(AudioInfo *info);
-	
-	gui::Playlist*
-	GetActivePlaylist(int *indexp = nullptr);
 	
 	Song*
 	GetCurrentSong(int *index = nullptr);
@@ -92,8 +90,8 @@ public:
 	void
 	PlayStop();
 	
-	static
-	bool QueryAppConfigPath(QString &path);
+	static bool
+	QueryAppConfigPath(QString &path);
 	
 	void
 	ReachedEndOfStream();
@@ -101,7 +99,8 @@ public:
 	void
 	RemoveSelectedSongs();
 	
-	bool SavePlaylistsToDisk();
+	bool
+	SavePlaylistsToDisk();
 	
 	void
 	SetActive(gui::Playlist *playlist);
@@ -141,6 +140,7 @@ private:
 	gui::Playlist* CreatePlaylist(const QString &name, int *index = nullptr);
 	bool DeletePlaylist(gui::Playlist *p, int index);
 	u64 GenNewPlaylistId() const;
+	gui::Playlist* GetComboCurrentPlaylist(int *pindex);
 	void LoadPlaylist(const QString &full_path);
 	void LoadPlaylists();
 	int PickSong(QVector<Song*> *vec, const int current_song_index,
@@ -150,9 +150,9 @@ private:
 	void RegisterGlobalShortcut(const QString &action_name,
 		const QKeySequence &key_sequence, QIcon *icon = nullptr);
 	void RegisterGlobalShortcuts();
-	void SaveLastPlaylistState(const i32 index);
 	bool SavePlaylist(gui::Playlist *playlist, const QString &dir_path, const bool is_active);
 	bool SavePlaylistSimple(gui::Playlist *playlist);
+	void SavePlaylistState(const i32 index);
 	
 	NO_ASSIGN_COPY_MOVE(App);
 	
@@ -163,6 +163,7 @@ private:
 	audio::PlayMode play_mode_ = audio::PlayMode::NotSet;
 	QComboBox *playlists_cb_ = nullptr;
 	QVector<gui::Playlist*> playlists_;
+	gui::Playlist *active_playlist_ = nullptr;
 	QStackedLayout *playlist_stack_ = nullptr;
 	i32 last_playlist_index_ = -1;
 	QIcon app_icon_;

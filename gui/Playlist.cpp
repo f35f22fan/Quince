@@ -152,7 +152,7 @@ Playlist::RemoveSelectedSongs()
 		
 		if (song->marked_for_deletion())
 		{
-			mtl_info("Deleting index %d", i);
+			//mtl_info("Deleting index %d", i);
 			table_model_->removeRows(i, 1, QModelIndex());
 			count++;
 		}

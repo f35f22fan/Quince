@@ -26,6 +26,20 @@ SeekPane::~SeekPane() {
 }
 
 void
+SeekPane::ActivePlaylistChanged(gui::Playlist *playlist)
+{
+	CHECK_PTR_VOID(playlist);
+	UpdatePlaylistDuration(playlist);
+	
+	i32 song_index;
+	Song *song = playlist->GetCurrentSong(&song_index);
+	i64 new_pos = (song == nullptr) ? 0 : song->playing_at();
+	slider_->setValue(new_pos / NS_MS_GAP);
+	SetLabelValue(position_label_, new_pos);
+	SetLabelValue(duration_label_, new_pos);
+}
+
+void
 SeekPane::CreateGui()
 {
 	QBoxLayout *layout = new QBoxLayout(QBoxLayout::LeftToRight);
@@ -46,21 +60,6 @@ SeekPane::CreateGui()
 	
 	playlist_duration_ = new QLabel(this);
 	layout->addWidget(playlist_duration_);
-}
-
-void
-SeekPane::SetActive(gui::Playlist *playlist)
-{
-	CHECK_PTR_VOID(playlist);
-	UpdatePlaylistDuration(playlist);
-	
-	i32 song_index;
-	Song *song = playlist->GetCurrentSong(&song_index);
-	
-	i64 new_pos = (song == nullptr) ? 0 : song->playing_at();
-	slider_->setValue(new_pos / NS_MS_GAP);
-	SetLabelValue(position_label_, new_pos);
-	SetLabelValue(duration_label_, new_pos);
 }
 
 void

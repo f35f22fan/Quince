@@ -37,7 +37,7 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 		auto &ssp = player->set_seek_and_pause_;
 		if (ssp.pending) {
 			ssp.pending = false;
-			player->SetSeekAndPause2();
+			player->SetSeekAndPause_Finish();
 		} else if (ssp.pending2) {
 			ssp.pending2 = false;
 			app->UpdatePlayingSongPosition(ssp.new_pos);
@@ -130,7 +130,7 @@ GST_STATE_PLAYING – the element is PLAYING, the GstClock is running and the da
 }
 
 void
-GstPlayer::SetSeekAndPause(Song *song)
+GstPlayer::SetSeekAndPause_Start(Song *song)
 {
 	gst_element_set_state(play_elem_, GST_STATE_NULL);
 	auto ba = song->uri().toLocal8Bit();
@@ -139,11 +139,11 @@ GstPlayer::SetSeekAndPause(Song *song)
 	set_seek_and_pause_.pending = true;
 	set_seek_and_pause_.song = song;
 	gst_element_set_state(play_elem_, GST_STATE_PAUSED);
-	// now waiting for async_done on the bus to trigger SetSeekAndPause2()
+	// now waiting for async_done on the bus to trigger SetSeekAndPause_Finish()
 }
 
 void
-GstPlayer::SetSeekAndPause2()
+GstPlayer::SetSeekAndPause_Finish()
 {
 	Song *song = set_seek_and_pause_.song;
 	app_->slider_pane()->SetCurrentSong(song);

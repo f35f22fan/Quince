@@ -44,36 +44,33 @@ public:
 	QModelIndex
 	index(int row, int column, const QModelIndex &parent) const override;
 	
+	bool
+	InsertRows(const i32 at, const QVector<Song*> &songs_to_add);
+	
 	virtual bool insertRows(int row, int count, const QModelIndex &parent) override {
 		mtl_trace();
-		return true;
+		return false;
 	}
+	
 	virtual bool insertColumns(int column, int count, const QModelIndex &parent) override {
 		mtl_trace();
 		return true;
 	}
-	virtual bool removeRows(int row, int count, const QModelIndex &parent) override {
-		const int first = row;
-		const int last = row + count;
-		beginRemoveRows(QModelIndex(), first, last);
-		songs_.erase(songs_.begin() + first);
-		endRemoveRows();
-		return true;
-	}
+	virtual bool removeRows(int row, int count, const QModelIndex &parent) override;
 	virtual bool removeColumns(int column, int count, const QModelIndex &parent) override {
 		mtl_trace();
 		return true;
 	}
 	
-	void
-	SignalRowsInserted(i32 first, i32 last) {
-		emit rowsInserted(QModelIndex(), first, last, {});
-	}
+//	void
+//	SignalRowsInserted(i32 first, i32 last) {
+//		emit rowsInserted(QModelIndex(), first, last, {});
+//	}
 	
-	void
-	SignalRowsRemoved(i32 first, i32 last) {
-		emit rowsRemoved(QModelIndex(), first, last, {});
-	}
+//	void
+//	SignalRowsRemoved(i32 first, i32 last) {
+//		emit rowsRemoved(QModelIndex(), first, last, {});
+//	}
 	
 	QVector<Song*>&
 	songs() { return songs_; }

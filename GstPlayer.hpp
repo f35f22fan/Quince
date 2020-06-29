@@ -25,10 +25,10 @@ public:
 	SeekTo(const i64 new_pos);
 	
 	void
-	SetSeekAndPause(Song *song);
+	SetSeekAndPause_Start(Song *song);
 	
 	void
-	SetSeekAndPause2();
+	SetSeekAndPause_Finish();
 	
 	void
 	StopPlaying(Song *song);

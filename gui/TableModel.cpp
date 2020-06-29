@@ -165,6 +165,55 @@ TableModel::headerData(int section_i, Qt::Orientation orientation, int role) con
 	return {};
 }
 
+bool
+TableModel::InsertRows(const i32 at, const QVector<Song*> &songs_to_add)
+{
+	if (songs_to_add.isEmpty())
+		return false;
+	
+	const int first = at;
+	const int last = at + songs_to_add.size() - 1;
+	
+	beginInsertRows(QModelIndex(), first, last);
+	
+	for (i32 i = 0; i < songs_to_add.size(); i++)
+	{
+		auto *song = songs_to_add[i];
+		songs_.insert(at + i, song);
+	}
+	
+	endInsertRows();
+	
+	return true;
+}
+
+bool
+TableModel::removeRows(int row, int count, const QModelIndex &parent)
+{
+	if (count <= 0)
+		return false;
+	
+	if (count != 1)
+	{
+		mtl_warn("Count != 1");
+		return false;
+	}
+	
+	const int first = row;
+	const int last = row + count - 1;
+	beginRemoveRows(QModelIndex(), first, last);
+	
+	for (int i = count - 1; i >= 0; i--) {
+		const i32 index = first + i;
+		auto *item = songs_[index];
+		songs_.erase(songs_.begin() + index);
+		delete item;
+	}
+	
+	endRemoveRows();
+	return true;
+}
+
 void
 TableModel::TimerHit()
 {
