@@ -1,6 +1,9 @@
 #pragma once
 
 #include "../audio.hxx"
+#include "../err.hpp"
+
+#include <QString>
 
 namespace quince::audio {
 
@@ -52,6 +55,12 @@ public:
 	i32 sample_rate() const { return sample_rate_; }
 	void sample_rate(i32 n) { sample_rate_ = n; }
 	
+	void
+	InterpretID3V1(const char *buf);
+	
+	i32
+	InterpretTagV2Frame(const char *buf, const i32 max_size);
+	
 private:
 	
 	i8 channels_ = -1;
@@ -61,6 +70,11 @@ private:
 	i32 bitrate_ = -1;
 	Codec audio_codec_ = Codec::Unknown;
 	Genre genre_ = Genre::None;
+	
+	QString song_name_;
+	QString artist_;
+	QString album_;
+	i32 year_ = -1;
 };
 
 }

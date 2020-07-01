@@ -96,7 +96,7 @@ enum class Genre : i16 {
 	NeueDeutscheWelle, Podcast, IndieRock, GFunk, Dubstep, GarageRock,
 	Psybient,
 	
-	MaxEnumValue
+	Count
 };
 
 // http://mpgedit.org/mpgedit/mpeg_format/mpeghdr.htm

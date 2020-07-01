@@ -62,16 +62,6 @@ public:
 		return true;
 	}
 	
-//	void
-//	SignalRowsInserted(i32 first, i32 last) {
-//		emit rowsInserted(QModelIndex(), first, last, {});
-//	}
-	
-//	void
-//	SignalRowsRemoved(i32 first, i32 last) {
-//		emit rowsRemoved(QModelIndex(), first, last, {});
-//	}
-	
 	QVector<Song*>&
 	songs() { return songs_; }
 	

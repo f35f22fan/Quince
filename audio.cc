@@ -9,6 +9,20 @@
 
 namespace quince::audio {
 
+Genre
+GenreFromString(const QString &s)
+{
+	const int count = int(Genre::Count);
+	
+	for (int i = 0; i < count; i++) {
+		if (audio::GenreStringArray[i] == s) {
+			return Genre(i16(i));
+		}
+	}
+	
+	return Genre::None;
+}
+
 const char*
 GenreToString(const Genre g)
 {
@@ -112,20 +126,17 @@ ReadID3V1Size(std::ifstream& infile, Meta *meta)
 	{
 		size = 128; //found tag data
 		
-		if (meta != nullptr)
-		{
-//			QFileInfo fi(name);
-//			QByteArray ba = fi.fileName().toLocal8Bit();
-			u8 n = buf[127];
-			//mtl_info("%s [%u]", ba.data(), n);
+//		if (meta != nullptr)
+//		{
+//			meta->InterpretID3V1(buf);
+//			u8 n = buf[127];
 			
-			if (i16(n) > i16(Genre::MaxEnumValue)) {
-				//mtl_info("[MAX]: %u", n);
-				meta->genre(Genre::None);
-			} else {
-				meta->genre(Genre(i16(n)));
-			}
-		}
+//			if (i16(n) < i16(Genre::Count)) {
+//				meta->genre(Genre(i16(n)));
+//			} else {
+//				meta->genre(Genre::None);
+//			}
+//		}
 	}
 	
 	infile.seekg(saved_pos);
@@ -134,7 +145,7 @@ ReadID3V1Size(std::ifstream& infile, Meta *meta)
 }
 
 i32
-ReadID3V2Size(std::ifstream& infile)
+ReadID3V2Size(std::ifstream& infile, Meta *meta)
 {
 	std::streampos saved_pos = infile.tellg(); 
 	infile.seekg(0, std::ios::beg);
@@ -152,6 +163,22 @@ ReadID3V2Size(std::ifstream& infile)
 	i32 size = 0;
 	infile.read(reinterpret_cast<char*>(&size), sizeof size);
 	size = syncsafe(size);
+	i32 so_far = 0;
+	
+	if (meta != nullptr && size > 0) {
+		char tag2[size];
+		infile.read(tag2, sizeof tag2);
+		
+		while (so_far < size) {
+			i32 sz = meta->InterpretTagV2Frame(tag2 + so_far, size - so_far);
+			
+			if (sz == -1)
+				break; // no more frames
+			
+			so_far += sz;
+		}
+	}
+	
 	infile.seekg(saved_pos);
 	
 	// + 10 bytes of ID3v2 header
@@ -192,7 +219,8 @@ ReadFileDurationMp3(const char *full_path, Meta &meta)
 	infile.seekg(0, std::ios::beg);
 	
 	const i32 v1_size = ReadID3V1Size(infile, &meta);
-	const i32 v2_size = ReadID3V2Size(infile);
+	mtl_info("File: \"%s\"", full_path);
+	const i32 v2_size = ReadID3V2Size(infile, &meta);
 	
 	if (v1_size == -1 || v2_size == -1) {
 		mtl_warn("ID3v 1 or 2 not present");

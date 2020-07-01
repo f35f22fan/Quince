@@ -1,14 +1,19 @@
 #pragma once
 
-#include <gst/gst.h>
-#include <iostream>
-#include <fstream>
-
 #include "audio.hxx"
 #include "audio/decl.hxx"
 #include "types.hxx"
 
+#include <gst/gst.h>
+#include <iostream>
+#include <fstream>
+
+#include <QString>
+
 namespace quince::audio {
+
+Genre
+GenreFromString(const QString &s);
 
 const char*
 GenreToString(const Genre g);
@@ -36,7 +41,7 @@ ReadID3V1Size(std::ifstream& infile, Meta *meta);
 //how much room does ID3 version 2 tag info
 //take up at the beginning of this file (if any)
 i32
-ReadID3V2Size(std::ifstream& infile);
+ReadID3V2Size(std::ifstream& infile, Meta *meta);
 
 //Intel processors are little-endian;
 //search Google or see: http://en.wikipedia.org/wiki/Endian
