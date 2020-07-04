@@ -97,6 +97,9 @@ public:
 	ReachedEndOfStream();
 	
 	void
+	RemoveAllSongsFromPlaylist();
+	
+	void
 	RemoveSelectedSongs();
 	
 	bool

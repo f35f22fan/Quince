@@ -591,6 +591,8 @@ App::CreateMediaActionsToolBar()
 	w = AddAction(tb, "list-remove", actions::RemoveSongFromPlaylist);
 	w->setToolTip("Remove song from playlist");
 	
+	AddAction(tb, "edit-clear", actions::PlaylistRemoveAllEntries, "Remove all songs");
+	
 	auto *label = new QLabel("   ");
 	tb->addWidget(label);
 	tb->addSeparator();
@@ -1067,6 +1069,8 @@ App::ProcessAction(const QString &action_name)
 		AskRenamePlaylist();
 	} else if (action_name == actions::PlaylistDelete) {
 		AskDeletePlaylist();
+	} else if (action_name == actions::PlaylistRemoveAllEntries) {
+		RemoveAllSongsFromPlaylist();
 	} else {
 		auto ba = action_name.toLocal8Bit();
 		mtl_trace("Action skipped: \"%s\"", ba.data());
@@ -1227,6 +1231,17 @@ App::RegisterGlobalShortcuts()
 	RegisterGlobalShortcut(actions::MediaPlayPrev, Qt::Key_MediaPrevious);
 	RegisterGlobalShortcut(actions::MediaPlayNext, Qt::Key_MediaNext);
 	RegisterGlobalShortcut(actions::MediaPlayStop, Qt::Key_MediaStop);
+}
+
+void
+App::RemoveAllSongsFromPlaylist()
+{
+	gui::Playlist *playlist = GetComboCurrentPlaylist(nullptr);
+	CHECK_PTR_VOID(playlist);
+	const i32 count = playlist->RemoveAllSongs();
+	
+	if (count > 0)
+		seek_pane_->UpdatePlaylistDuration(playlist);
 }
 
 void

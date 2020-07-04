@@ -62,6 +62,9 @@ enum class Codec : u8 {
 
 enum class Genre : i16 {
 	None = -1,
+// WARNING: Don't change the genres order!
+
+// The following genres are defined in ID3v1:
 	Blues, ClassicRock, Country, Dance, Disco, Funk, Grunge, HipHop,
 	Jazz, Metal, NewAge, Oldies, Other, Pop, RNB, Rap, Reggae, Rock,
 	Techno, Industrial, Alternative, Ska, DeathMetal, Pranks,
@@ -74,6 +77,8 @@ enum class Genre : i16 {
 	Jungle, NativeAmerican, Cabaret, NewWave, Psychedelic, Rave,
 	Showtunes, Trailer, LoFi, Tribal, AcidPunk, Polka, Retro, Musical,
 	RockNRoll, HardRock,
+	
+// The following genres are Winamp extensions
 	Folk, FolkRock, NationalFolk, Swing, FastFusion, Bebob, Latin,
 	Revival, Celtic, Bluegrass, Avantgarde, GothicRock, ProgressiveRock,
 	PsychedelicRock, SymphonicRock, SlowRock, BigBand, Chorus,
@@ -82,7 +87,8 @@ enum class Genre : i16 {
 	Satire, SlowJam, Club, Tango, Samba, Folklore, Ballad, PowerBallad,
 	RhytmicSoul, Freestyle, Duet, PunkRock, DrumSolo, ACapela,
 	EuroHouse, DanceHall,
-	
+
+// And even more genres, I forgot where I took these from:
 	GoaMusic, DrumNBass, ClubHouse, HardcoreTechno, Terror, Indie,
 	BritPop, Negerpunk, PolskPunk, Beat, ChristianGangstaRap,
 	HeavyMetal, BlackMetal, Crossover, ContemporaryChristian,
@@ -118,6 +124,7 @@ static const char *GenreStringArray[] =
  "Cabaret", "New Wave", "Psychedelic", "Rave", "Showtunes",
  "Trailer", "Lo-Fi", "Tribal", "Acid Punk", "Acid Jazz", "Polka",
  "Retro", "Musical", "Rock & Roll", "Hard Rock",
+
  "Folk", "Folk-Rock", "National Folk", "Swing", "Fast Fusion", "Bebob",
  "Latin", "Revival", "Celtic", "Bluegrass", "Avantgarde",
  "Gothic Rock", "Progressive Rock", "Psychedelic Rock",

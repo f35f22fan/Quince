@@ -124,6 +124,22 @@ Playlist::QuerySaveFolder(QString &ret_val)
 }
 
 i32
+Playlist::RemoveAllSongs()
+{
+	QVector<Song*> &songs = table_model_->songs();
+	
+	i32 count = 0;
+	for (i32 i = songs.size() - 1; i >= 0; i--)
+	{
+		quince::Song *song = songs[i];
+		table_model_->removeRows(i, 1, QModelIndex());
+		count++;
+	}
+
+	return count;
+}
+
+i32
 Playlist::RemoveSelectedSongs()
 {
 	auto list = table_->selectionModel()->selectedRows();

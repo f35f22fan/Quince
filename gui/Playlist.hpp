@@ -43,6 +43,9 @@ public:
 	QuerySaveFolder(QString &ret_val);
 	
 	i32
+	RemoveAllSongs(); // returns num rows removed
+	
+	i32
 	RemoveSelectedSongs(); // returns num rows removed
 	
 	QVector<Song*>&

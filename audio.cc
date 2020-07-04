@@ -219,6 +219,7 @@ ReadFileDurationMp3(const char *full_path, Meta &meta)
 	infile.seekg(0, std::ios::beg);
 	
 	const i32 v1_size = ReadID3V1Size(infile, &meta);
+	printf("\n");
 	mtl_info("File: \"%s\"", full_path);
 	const i32 v2_size = ReadID3V2Size(infile, &meta);
 	
