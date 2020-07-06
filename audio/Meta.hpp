@@ -4,6 +4,7 @@
 #include "../err.hpp"
 
 #include <QString>
+#include <QVector>
 
 namespace quince::audio {
 
@@ -49,8 +50,7 @@ public:
 	i8 channels() const { return channels_; }
 	void channels(i8 n) { channels_ = n; }
 	
-	Genre genre() const { return genre_; }
-	void genre(Genre g) { genre_ = g; }
+	QVector<Genre>& genres() { return genres_; }
 	
 	i32 sample_rate() const { return sample_rate_; }
 	void sample_rate(i32 n) { sample_rate_ = n; }
@@ -59,7 +59,7 @@ public:
 	InterpretID3V1(const char *buf);
 	
 	i32
-	InterpretTagV2Frame(const char *buf, const i32 max_size);
+	InterpretTagV2Frame(const char *buf, const i32 max_size, const char *full_path);
 	
 private:
 	
@@ -69,7 +69,7 @@ private:
 	i64 duration_ = -1;
 	i32 bitrate_ = -1;
 	Codec audio_codec_ = Codec::Unknown;
-	Genre genre_ = Genre::None;
+	QVector<Genre> genres_;
 	
 	QString song_name_;
 	QString artist_;

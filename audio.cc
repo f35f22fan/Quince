@@ -9,18 +9,61 @@
 
 namespace quince::audio {
 
-Genre
-GenreFromString(const QString &s)
+bool
+GenresFromString(const QString &s, QVector<Genre> &vec)
 {
-	const int count = int(Genre::Count);
+	if (s.startsWith('('))
+	{
+		int end = s.indexOf(')');
+		
+		if (end == -1)
+			return false;
+		
+		bool ok;
+		QStringRef ref = s.midRef(1, end - 1);
+		i16 index = ref.toShort(&ok);
+		
+		if (!ok || index > i16(Genre::Count))
+			return false;
+		
+		vec.append(Genre(index));
+		
+		return true;
+	}
 	
-	for (int i = 0; i < count; i++) {
-		if (audio::GenreStringArray[i] == s) {
-			return Genre(i16(i));
+	const int total_genres_count = int(Genre::Count);
+	QStringList genres = s.split(',');
+	
+	for (const auto &str_genre: genres) {
+		
+		bool found = false;
+		
+		for (int i = 0; i <= total_genres_count; i++) {
+			QString registered_genre = audio::GenresForInternalUsage[i];
+			
+	//		auto ba1 = s.toLocal8Bit();
+	//		auto ba2 = next_genre.toLocal8Bit();
+	//		mtl_info("\"%s\"(%d) vs \"%s\"(%d)",
+	//			ba1.data(), s.size(), ba2.data(), next_genre.size());
+			
+			if (registered_genre == str_genre) {
+	//			mtl_warn("BINGO!");
+				vec.append(Genre(i16(i)));
+				found = true;
+			}
+		}
+		
+		 // workarounds:
+		if (!found) {
+			if (str_genre == "попрок") {
+				vec.append(Genre::PopRock);
+			} else if (str_genre == "синтипоп") {
+				vec.append(Genre::SynthPop);
+			}
 		}
 	}
 	
-	return Genre::None;
+	return true;
 }
 
 const char*
@@ -30,6 +73,22 @@ GenreToString(const Genre g)
 		return "";
 	
 	return GenreStringArray[int(g)];
+}
+
+QString
+GenresToString(const QVector<Genre> &v)
+{
+	QString s;
+	const auto count = v.size();
+	
+	for (int i = 0; i < count; i++) {
+		s.append(GenreToString(v[i]));
+		
+		if (i < count - 1)
+			s.append(',');
+	}
+	
+	return s;
 }
 
 MpegVersion
@@ -145,7 +204,7 @@ ReadID3V1Size(std::ifstream& infile, Meta *meta)
 }
 
 i32
-ReadID3V2Size(std::ifstream& infile, Meta *meta)
+ReadID3V2Size(std::ifstream& infile, Meta *meta, const char *full_path)
 {
 	std::streampos saved_pos = infile.tellg(); 
 	infile.seekg(0, std::ios::beg);
@@ -170,7 +229,7 @@ ReadID3V2Size(std::ifstream& infile, Meta *meta)
 		infile.read(tag2, sizeof tag2);
 		
 		while (so_far < size) {
-			i32 sz = meta->InterpretTagV2Frame(tag2 + so_far, size - so_far);
+			i32 sz = meta->InterpretTagV2Frame(tag2 + so_far, size - so_far, full_path);
 			
 			if (sz == -1)
 				break; // no more frames
@@ -219,9 +278,7 @@ ReadFileDurationMp3(const char *full_path, Meta &meta)
 	infile.seekg(0, std::ios::beg);
 	
 	const i32 v1_size = ReadID3V1Size(infile, &meta);
-	printf("\n");
-	mtl_info("File: \"%s\"", full_path);
-	const i32 v2_size = ReadID3V2Size(infile, &meta);
+	const i32 v2_size = ReadID3V2Size(infile, &meta, full_path);
 	
 	if (v1_size == -1 || v2_size == -1) {
 		mtl_warn("ID3v 1 or 2 not present");

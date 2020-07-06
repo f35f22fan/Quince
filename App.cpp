@@ -306,7 +306,14 @@ gui::TableModel*
 App::active_table_model()
 {
 	if (active_playlist_ == nullptr)
-		return nullptr;
+	{
+		int index = playlists_cb_->currentIndex();
+		
+		if (index == -1 || index >= playlists_.size())
+			return nullptr;
+		
+		return playlists_[index]->table_model();
+	}
 	
 	return active_playlist_->table_model();
 }
@@ -713,8 +720,10 @@ App::GetCurrentSong(int *index)
 {
 	auto *songs = active_playlist_songs();
 	
-	if (songs == nullptr)
+	if (songs == nullptr) {
+		mtl_trace();
 		return nullptr;
+	}
 	
 	for (int i = 0; i < songs->size(); i++)
 	{
@@ -732,6 +741,7 @@ App::GetCurrentSong(int *index)
 	if (index != nullptr)
 		*index = -1;
 	
+	mtl_trace();
 	return nullptr;
 }
 
@@ -1041,10 +1051,13 @@ App::ProcessAction(const QString &action_name)
 		
 		if (playing_song == nullptr)
 		{
+			mtl_trace();
 			playing_song = GetFirstSongInCurrentPlaylist();
 			
-			if (playing_song == nullptr)
+			if (playing_song == nullptr) {
+				mtl_trace();
 				return;
+			}
 			
 			song_index = 0;
 		}

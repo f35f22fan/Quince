@@ -30,10 +30,11 @@ Playlist::CreateGui()
 	// column widths to be set after setting the model
 	table_->setColumnWidth(i8(Column::Name), 500);
 	table_->setColumnWidth(i8(Column::Duration), 200);
-	table_->setColumnWidth(i8(Column::Bitrate), 120);
-	table_->setColumnWidth(i8(Column::BitsPerSample), 120);
-	table_->setColumnWidth(i8(Column::Channels), 120);
-	table_->setColumnWidth(i8(Column::SampleRate), 120);
+	table_->setColumnWidth(i8(Column::Bitrate), 90);
+	table_->setColumnWidth(i8(Column::BitsPerSample), 60);
+	table_->setColumnWidth(i8(Column::Channels), 60);
+	table_->setColumnWidth(i8(Column::SampleRate), 90);
+	table_->setColumnWidth(i8(Column::Genre), 200);
 	
 	connect(table_, &QTableView::doubleClicked, this,
 		&Playlist::PlaylistDoubleClicked);

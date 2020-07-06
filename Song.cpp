@@ -23,7 +23,13 @@ Song::From(quince::ByteArray &ba)
 	meta.duration(ba.next_i64());
 	meta.bitrate(ba.next_i32());
 	meta.audio_codec(audio::Codec(ba.next_u8()));
-	meta.genre(audio::Genre(ba.next_i16()));
+	
+	const u8 count = ba.next_u8();
+	auto &vec = meta.genres();
+	
+	for (u8 i = 0; i < count; i++) {
+		vec.append(audio::Genre(ba.next_i16()));
+	}
 	
 	return song;
 }
@@ -73,7 +79,13 @@ Song::SaveTo(quince::ByteArray &ba)
 	ba.add_i64(meta_.duration());
 	ba.add_i32(meta_.bitrate());
 	ba.add_u8(u8(meta_.audio_codec()));
-	ba.add_i16(i16(meta_.genre()));
+	
+	auto &vec = meta_.genres();
+	const u8 count = vec.size();
+	ba.add_u8(count);
+	
+	for (u8 i = 0; i < count; i++)
+		ba.add_i16(i16(vec[i]));
 }
 
 }

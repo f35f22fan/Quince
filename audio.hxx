@@ -92,7 +92,7 @@ enum class Genre : i16 {
 	GoaMusic, DrumNBass, ClubHouse, HardcoreTechno, Terror, Indie,
 	BritPop, Negerpunk, PolskPunk, Beat, ChristianGangstaRap,
 	HeavyMetal, BlackMetal, Crossover, ContemporaryChristian,
-	ChristianRock, Merengue, Salsa, ThrashMetal, Anime, Jpop, Synthpop,
+	ChristianRock, Merengue, Salsa, ThrashMetal, Anime, Jpop, SynthPop,
 	Abstract, ArtRock, Baroque, Bhangra, BigBeat, Breakbeat, Chillout,
 	Downtempo, Dub, EBM, Eclectic, Electro, Electroclash, Emo,
 	Experimental, Garage, Global, IDM, Illbient, IndustroGoth,
@@ -102,6 +102,10 @@ enum class Genre : i16 {
 	NeueDeutscheWelle, Podcast, IndieRock, GFunk, Dubstep, GarageRock,
 	Psybient,
 	
+// My extra additions:
+	Foreignbard, NuMetal, Electronics, RusRock, ClassicMetal, PopRock,
+	DancePop, PopDisco, EuroDisco, Romantic, BluesRock, PopDance, _90sPop,
+	_90sElectronic,
 	Count
 };
 
@@ -148,7 +152,61 @@ static const char *GenreStringArray[] =
  "Psytrance", "Shoegaze", "Space Rock", "Trop Rock", "World Music",
  "Neoclassical", "Audiobook", "Audio Theatre", "Neue Deutsche Welle",
  "Podcast", "Indie-Rock", "G-Funk", "Dubstep", "Garage Rock",
- "Psybient"
+ "Psybient",
+
+// My exra additions:
+ "Foreignbard", "Nu Metal", "Electronics", "Rus Rock", "Classic Metal",
+ "Pop Rock", "Dance Pop", "Pop Disco", "Euro Disco", "Romantic",
+ "Blues Rock", "Pop Dance", "90's Pop", "90's Electronic"
+};
+
+static const char *GenresForInternalUsage[] =
+{
+ "blues", "classicrock", "country", "dance", "disco", "funk",
+ "grunge", "hiphop", "jazz", "metal", "newage", "oldies", "other",
+ "pop", "rnb", "rap", "reggae", "rock", "techno", "industrial",
+ "alternative", "ska", "deathmetal", "pranks", "soundtrack",
+ "eurotechno", "ambient", "triphop", "vocal", "jazzfunk",
+ "fusion", "trance", "classical", "instrumental", "acid", "house",
+ "game", "soundclip", "gospel", "noise", "alternativerock", "bass",
+ "soul", "punk", "space", "meditative", "instrumentalpop",
+ "instrumentalrock", "ethnic", "gothic", "darkwave",
+ "technoindustrial", "electronic", "popfolk", "eurodance",
+ "dream", "southernrock", "comedy", "cult", "gangsta", "top40",
+ "christianrap", "popfunk", "jungle", "nativeamerican",
+ "cabaret", "newwave", "psychedelic", "rave", "showtunes",
+ "trailer", "lofi", "tribal", "acidpunk", "acidjazz", "polka",
+ "retro", "musical", "rocknroll", "hardrock",
+
+ "folk", "folkrock", "nationalfolk", "swing", "fastfusion", "bebob",
+ "latin", "revival", "celtic", "bluegrass", "avantgarde",
+ "gothicrock", "progressiverock", "psychedelicrock",
+ "symphonicrock", "slowrock", "bigband", "chorus", "easylistening",
+ "acoustic", "humour", "speech", "chanson", "opera", "chambermusic",
+ "sonata", "symphony", "bootybrass", "primus", "porngroove",
+ "satire", "slowjam", "club", "tango", "samba", "folklore", "ballad",
+ "powerballad", "rhythmicsoul", "freestyle", "duet", "punkrock",
+ "drumsolo", "acapela", "eurohouse", "dancehall",
+
+ "goamusic", "drumnbass", "clubhouse", "hardcoretechno",
+ "terror", "indie", "britpop", "negerpunk", "polskpunk", "beat",
+ "christiangangstarap", "heavymetal", "blackmetal", "crossover",
+ "contemporarychristian", "christianrock", "merengue", "salsa",
+ "thrashmetal", "anime", "jpop", "synthpop", "abstract", "artrock",
+ "baroque", "bhangra", "bigbeat", "breakbeat", "chillout",
+ "downtempo", "dub", "ebm", "eclectic", "electro", "electroclash",
+ "emo", "experimental", "garage", "global", "idm", "illbient",
+ "industrogoth", "jamband", "krautrock", "leftfield", "lounge",
+ "mathrock", "newromantic", "nubreakz", "postpunk", "postrock",
+ "psytrance", "shoegaze", "spacerock", "troprock", "worldmusic",
+ "neoclassical", "audiobook", "audiotheatre", "neuedeutschewelle",
+ "podcast", "indierock", "gfunk", "dubstep", "garagerock",
+ "psybient",
+
+// my extra additions:
+ "foreignbard", "numetal", "electronics", "rusrock", "classicmetal",
+ "poprock", "dancepop", "popdisco", "eurodisco", "romantic", "bluesrock",
+ "popdance", "90spop", "90selectronic"
 };
 
 }

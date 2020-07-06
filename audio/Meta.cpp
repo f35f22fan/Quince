@@ -2,6 +2,8 @@
 
 #include "../audio.hh"
 
+#include <QRegularExpression>
+
 namespace quince::audio {
 
 void
@@ -26,7 +28,8 @@ StartsWith4(const char *buf, const char *str)
 }
 
 i32
-Meta::InterpretTagV2Frame(const char *frame_start, const i32 max_size)
+Meta::InterpretTagV2Frame(const char *frame_start, const i32 max_size,
+	const char *full_path)
 {
 	i32 size;
 	memcpy(&size, frame_start + 4, 4);
@@ -36,10 +39,9 @@ Meta::InterpretTagV2Frame(const char *frame_start, const i32 max_size)
 		return -1; // no more frames
 	
 	const auto str_buf = frame_start + 11;
-	const auto str_len = size - 1;
+	auto str_len = size - 1;
 	
 	if (str_len > 50000) {
-		//mtl_info("Too long (%d), skipping", str_len);
 		return -1;
 	}
 	
@@ -53,36 +55,13 @@ Meta::InterpretTagV2Frame(const char *frame_start, const i32 max_size)
 			skip = 2;
 	}
 	
-	const auto str_buf_start = str_buf;// + skip;
-	auto str_buf_len = str_len;// - skip;
 	QString s;
 	
 	if (skip == 2) {
-		int end = -1;
-		bool last_was_zero = false;
-		
-		for (int i = 0; i < str_buf_len; i++)
-		{
-			u8 n = str_buf_start[i];
-			const bool is_zero = n == 0x00;
-			
-			if (is_zero) {
-				if (last_was_zero) {
-					end = i;
-					//mtl_info("FOUND 2 ZEROES!");
-					break;
-				}
-			}
-			
-			last_was_zero = is_zero;
-		}
-		
-		if (end != -1)
-			str_buf_len = end / 2;
-		
-		s = QString::fromUtf16((const ushort*)str_buf_start, str_buf_len);
+		str_len /= 2;
+		s = QString::fromUtf16((const char16_t*)str_buf, str_len);
 	} else {
-		s = QString::fromLocal8Bit(str_buf_start, str_buf_len);
+		s = QString::fromLatin1(str_buf, str_len);
 	}
 	
 	auto ba = s.toLocal8Bit();
@@ -96,17 +75,23 @@ Meta::InterpretTagV2Frame(const char *frame_start, const i32 max_size)
 		artist_ = s;
 	} else if (StartsWith4(frame_start, "TCON")) {
 		field_name = "Genre/TCON";
-		genre_ = audio::GenreFromString(s);
-//		mtl_info("Decoded genre: %s, genre str len: %d",
-//			audio::GenreToString(genre_), s.size());
+		static const QRegularExpression regex =
+			QRegularExpression("[ \\-\\/\\+\\']");
+		QString genre = s.toLower().replace(regex, "").replace('&', 'n');
+		const QChar last_char = genre.at(genre.size() - 1);
 		
-//		for (int i = 0; i < ba.size(); i++)
-//		{
-//			char c = ba.at(i);
-//			printf("[%c %X] ", c, u8(c));
-//		}
-//		printf("\n");
+		{ // workaround:
+			if (last_char.unicode() == 0x00)
+				genre = genre.left(genre.size() - 1);
+		}
 		
+		audio::GenresFromString(genre, genres_);
+		
+		if (genres_.isEmpty()) {
+			auto genre_ba = genre.toLocal8Bit();
+			mtl_warn("At file: \"%s\"\nFailed to decode genre(s): \"%s\"",
+				full_path, genre_ba.data());
+		}
 	} else if (StartsWith4(frame_start, "TYER")) {
 		field_name = "Year/TYER";
 	} else if (StartsWith4(frame_start, "TALB")) {
@@ -116,7 +101,7 @@ Meta::InterpretTagV2Frame(const char *frame_start, const i32 max_size)
 		field_name = "(Unprocessed field)";
 	}
 	
-	mtl_info("%s: \"%s\"", field_name, ba.data());
+	//mtl_info("%s: \"%s\"", field_name, ba.data());
 	
 	return size + 10;
 }

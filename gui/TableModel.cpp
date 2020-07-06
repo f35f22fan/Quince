@@ -114,7 +114,7 @@ TableModel::data(const QModelIndex &index, int role) const
 				return QString::number(meta.sample_rate());
 			}
 		} else if (col == Column::Genre) {
-			return audio::GenreToString(meta.genre());
+			return audio::GenresToString(meta.genres());
 		}
 		
 		return QVariant();

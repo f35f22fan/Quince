@@ -20,7 +20,7 @@
 
 namespace quince {
 
-static const i32 PlaylistCacheVersion = 1;
+static const i32 PlaylistCacheVersion = 2;
 static const QString AppConfigName = QLatin1String("QuincePlayer");
 
 struct DiscovererUserParams {
