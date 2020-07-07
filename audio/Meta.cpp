@@ -2,23 +2,10 @@
 
 #include "../audio.hh"
 
+#include <QDate>
 #include <QRegularExpression>
 
 namespace quince::audio {
-
-void
-Meta::InterpretID3V1(const char *buf)
-{
-	int offset = 3;
-	song_name_ = QString::fromLocal8Bit(buf + offset, 30);
-	
-	if (!song_name_.isEmpty())
-	{
-//		auto ba = song_name_.toLocal8Bit();
-//		mtl_info("\"%s\"", ba.data());
-	}
-	
-}
 
 bool
 StartsWith4(const char *buf, const char *str)
@@ -64,7 +51,6 @@ Meta::InterpretTagV2Frame(const char *frame_start, const i32 max_size,
 		s = QString::fromLatin1(str_buf, str_len);
 	}
 	
-	auto ba = s.toLocal8Bit();
 	const char *field_name = nullptr;
 	
 	if (StartsWith4(frame_start, "TIT2")) {
@@ -75,20 +61,18 @@ Meta::InterpretTagV2Frame(const char *frame_start, const i32 max_size,
 		artist_ = s;
 	} else if (StartsWith4(frame_start, "TCON")) {
 		field_name = "Genre/TCON";
-		static const QRegularExpression regex =
-			QRegularExpression("[ \\-\\/\\+\\']");
-		QString genre = s.toLower().replace(regex, "").replace('&', 'n');
-		const QChar last_char = genre.at(genre.size() - 1);
+		
+		const QChar last_char = s.at(s.size() - 1);
 		
 		{ // workaround:
 			if (last_char.unicode() == 0x00)
-				genre = genre.left(genre.size() - 1);
+				s = s.left(s.size() - 1);
 		}
 		
-		audio::GenresFromString(genre, genres_);
+		audio::GenresFromString(s.midRef(0), genres_);
 		
 		if (genres_.isEmpty()) {
-			auto genre_ba = genre.toLocal8Bit();
+			auto genre_ba = s.toLocal8Bit();
 			mtl_warn("At file: \"%s\"\nFailed to decode genre(s): \"%s\"",
 				full_path, genre_ba.data());
 		}
@@ -101,9 +85,64 @@ Meta::InterpretTagV2Frame(const char *frame_start, const i32 max_size,
 		field_name = "(Unprocessed field)";
 	}
 	
-	//mtl_info("%s: \"%s\"", field_name, ba.data());
+	// auto ba = s.toLocal8Bit();
+	// mtl_info("%s: \"%s\"", field_name, ba.data());
 	
 	return size + 10;
+}
+
+
+void
+Meta::InterpretOpusInfo(OggOpusFile *opus_file)
+{
+	int current_link = op_current_link(opus_file);
+	const OpusTags *opus_tags = op_tags(opus_file, current_link);
+	CHECK_PTR_VOID(opus_tags);
+	
+	char **comments = opus_tags->user_comments;
+	const u32 count = opus_tags->comments; // number of comment streams
+	i32 *lengths = opus_tags->comment_lengths;
+	
+	const auto Genre = QLatin1String("genre");
+	const auto Artist = QLatin1String("artist");
+	const auto Album = QLatin1String("album");
+	const auto Title = QLatin1String("title");
+	const auto Date = QLatin1String("date");
+	
+	for (i32 i = 0; i < count; i++)
+	{
+		char *comment = comments[i];
+		u32 len = lengths[i];
+		QString s = QString::fromUtf8(comment, len);
+		int index = s.indexOf('=');
+		
+		if (index < 1 || index >= s.size() - 2)
+			continue;
+		
+		QString key = s.leftRef(index).toString().toLower();
+		QStringRef value = s.midRef(index + 1);
+		
+		if (key == Genre) {
+			audio::GenresFromString(value, genres_);
+		} else if (key == Artist) {
+			artist_ = value.toString();
+		} else if (key == Album) {
+			album_ = value.toString();
+		} else if (key == Title) {
+			song_name_ = value.toString();
+		} else if (key == Date) {
+			bool ok;
+			int year = value.toInt(&ok);
+			
+			if (ok) {
+				year_ = year;
+			} else {
+				auto ba = value.toLocal8Bit();
+				mtl_trace("Invalid year: \"%s\"", ba.data());
+			}
+		}
+	}
+	
 }
 
 }

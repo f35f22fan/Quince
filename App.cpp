@@ -436,13 +436,20 @@ App::AskAddSongFilesToPlaylist()
 // <== Multi-file selection workaround
 	
 	if (!box.exec())
-	{
-		mtl_trace();
 		return;
-	}
 	
 	gui::Playlist *playlist = GetComboCurrentPlaylist(nullptr);
-	CHECK_PTR_VOID(playlist);
+	
+	if (playlist == nullptr)
+	{
+		if (playlists_.isEmpty()) {
+			playlist = CreatePlaylist("New Playlist");
+		} else {
+			mtl_warn("Can't get current playlist");
+			return;
+		}
+	}
+	
 	const QStringList filenames = box.selectedFiles();
 	struct stat st;
 	QVector<io::File> files;
@@ -741,7 +748,6 @@ App::GetCurrentSong(int *index)
 	if (index != nullptr)
 		*index = -1;
 	
-	mtl_trace();
 	return nullptr;
 }
 
@@ -870,36 +876,14 @@ App::LoadPlaylists()
 	if (io::ListFileNames(dir_path, names) != io::Err::Ok)
 		return;
 	
+	
 	for (const QString &filename: names)
 		LoadPlaylist(dir_path + filename);
-}
-
-void
-App::LoadSavedSongData(gui::Playlist *playlist)
-{
-	CHECK_PTR_VOID(playlist);
 	
-	const i64 sec = 1000'000'000L;
-	const i64 min = sec * 60L;
-	const i64 hour = min * 60L;
-	const i64 day = hour * 24L;
-	
-	QVector<io::File> files;
-	const QString mp3_dir_path = "/media/data/Audio/0 Best Hits/";
-	const QString flac_dir_path = "/media/data/Audio/0 Chillout/Psydub/Phaeleh - (2010) Fallen Light [Afterglo, AFTRCD1001]/";
-	const QString opus_dir_path = "/media/data/Audio/Twin Peaks/Twin Peaks - Music From the Limited Event Series (2017)(FLAC)(CD)/";
-	
-	QString dir_path = opus_dir_path;
-	
-	if (!dir_path.endsWith('/'))
-		dir_path.append('/');
-	
-	if (io::ListFiles(dir_path, files, 0, io::IsSongExtension) != io::Err::Ok) {
-		mtl_trace();
-		return;
+	{ // this fixes gui/playback glitches
+		if (playlists_.size() == 1)
+			SetActive(playlists_[0]);
 	}
-	
-	AddFilesToPlaylist(files, playlist);
 }
 
 void
@@ -1051,7 +1035,6 @@ App::ProcessAction(const QString &action_name)
 		
 		if (playing_song == nullptr)
 		{
-			mtl_trace();
 			playing_song = GetFirstSongInCurrentPlaylist();
 			
 			if (playing_song == nullptr) {

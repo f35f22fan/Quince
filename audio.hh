@@ -13,7 +13,7 @@
 namespace quince::audio {
 
 bool
-GenresFromString(const QString &s, QVector<Genre> &vec);
+GenresFromString(const QStringRef &s, QVector<Genre> &vec);
 
 const char*
 GenreToString(const Genre g);

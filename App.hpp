@@ -67,8 +67,6 @@ public:
 	bool
 	InitDiscoverer();
 	
-	void LoadSavedSongData(gui::Playlist *playlist);
-	
 	void
 	MessageAsyncDone();
 	

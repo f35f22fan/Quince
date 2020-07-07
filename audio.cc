@@ -6,12 +6,17 @@
 #include <cstdlib>
 #include <opusfile.h>
 #include <QFileInfo>
+#include <QRegularExpression>
 
 namespace quince::audio {
 
 bool
-GenresFromString(const QString &s, QVector<Genre> &vec)
+GenresFromString(const QStringRef &genre_name, QVector<Genre> &vec)
 {
+	static const QRegularExpression regex =
+		QRegularExpression("[ \\-\\/\\+\\']");
+	QString s = genre_name.toString().toLower().replace(regex, "").replace('&', 'n');
+	
 	if (s.startsWith('('))
 	{
 		int end = s.indexOf(')');
@@ -19,20 +24,24 @@ GenresFromString(const QString &s, QVector<Genre> &vec)
 		if (end == -1)
 			return false;
 		
-		bool ok;
 		QStringRef ref = s.midRef(1, end - 1);
-		i16 index = ref.toShort(&ok);
+		auto list = ref.split(',');
 		
-		if (!ok || index > i16(Genre::Count))
-			return false;
-		
-		vec.append(Genre(index));
+		for (auto &next: list) {
+			bool ok;
+			i16 index = next.toShort(&ok);
+			
+			if (!ok || index > i16(Genre::Count))
+				continue;
+			
+			vec.append(Genre(index));
+		}
 		
 		return true;
 	}
 	
 	const int total_genres_count = int(Genre::Count);
-	QStringList genres = s.split(',');
+	QVector<QStringRef> genres = s.splitRef(',');
 	
 	for (const auto &str_genre: genres) {
 		
@@ -40,16 +49,11 @@ GenresFromString(const QString &s, QVector<Genre> &vec)
 		
 		for (int i = 0; i <= total_genres_count; i++) {
 			QString registered_genre = audio::GenresForInternalUsage[i];
-			
-	//		auto ba1 = s.toLocal8Bit();
-	//		auto ba2 = next_genre.toLocal8Bit();
-	//		mtl_info("\"%s\"(%d) vs \"%s\"(%d)",
-	//			ba1.data(), s.size(), ba2.data(), next_genre.size());
-			
+
 			if (registered_genre == str_genre) {
-	//			mtl_warn("BINGO!");
 				vec.append(Genre(i16(i)));
 				found = true;
+				break;
 			}
 		}
 		
@@ -181,21 +185,8 @@ ReadID3V1Size(std::ifstream& infile, Meta *meta)
 	char buf[128] = {0};
 	infile.read(buf, 128);
 	
-	if(buf[0] == 'T' && buf[1] == 'A' && buf[2] == 'G')
-	{
+	if(buf[0] == 'T' && buf[1] == 'A' && buf[2] == 'G') {
 		size = 128; //found tag data
-		
-//		if (meta != nullptr)
-//		{
-//			meta->InterpretID3V1(buf);
-//			u8 n = buf[127];
-			
-//			if (i16(n) < i16(Genre::Count)) {
-//				meta->genre(Genre(i16(n)));
-//			} else {
-//				meta->genre(Genre::None);
-//			}
-//		}
 	}
 	
 	infile.seekg(saved_pos);
@@ -422,6 +413,8 @@ ReadFileDurationOggOpus(const char *full_path, Meta &meta)
 		return false;
 	}
 	
+	meta.InterpretOpusInfo(opus_file);
+	
 	i32 bitrate = op_bitrate(opus_file, 0);
 	
 	if (bitrate < 0) {
@@ -450,6 +443,7 @@ ReadFileDurationOggOpus(const char *full_path, Meta &meta)
 	
 	i64 n = (pcm / 48000L) * 1000'000'000L;
 	meta.duration(n);
+	
 	
 	return true;
 }

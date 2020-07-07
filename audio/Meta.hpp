@@ -3,6 +3,8 @@
 #include "../audio.hxx"
 #include "../err.hpp"
 
+#include <opusfile.h>
+
 #include <QString>
 #include <QVector>
 
@@ -56,7 +58,7 @@ public:
 	void sample_rate(i32 n) { sample_rate_ = n; }
 	
 	void
-	InterpretID3V1(const char *buf);
+	InterpretOpusInfo(OggOpusFile *opus_file);
 	
 	i32
 	InterpretTagV2Frame(const char *buf, const i32 max_size, const char *full_path);
