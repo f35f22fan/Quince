@@ -181,7 +181,7 @@ ReadID3V1Size(std::ifstream& infile, Meta *meta)
 	std::streampos length = infile.tellg() - std::streampos(128);
 	infile.seekg(length);
 	
-	i32 size = -1;
+	i32 size = 0;
 	char buf[128] = {0};
 	infile.read(buf, 128);
 	
@@ -239,13 +239,13 @@ bool
 ReadFileMeta(const char *full_path, Meta &meta)
 {
 	if (meta.is_codec_mp3()) {
-		ReadFileDurationMp3(full_path, meta);
+		ReadMp3FileMeta(full_path, meta);
 	} else if (meta.is_codec_flac())
-		ReadFileDurationFlac(full_path, meta);
+		ReadFlacFileMeta(full_path, meta);
 	else if (meta.is_codec_ogg_opus())
-		ReadFileDurationOggOpus(full_path, meta);
+		ReadOggOpusFileMeta(full_path, meta);
 	else {
-		mtl_warn();
+		mtl_trace();
 		return false;
 	}
 	
@@ -253,7 +253,7 @@ ReadFileMeta(const char *full_path, Meta &meta)
 }
 
 bool
-ReadFileDurationMp3(const char *full_path, Meta &meta)
+ReadMp3FileMeta(const char *full_path, Meta &meta)
 {
 	std::ifstream infile(full_path, std::ios::binary);
 	
@@ -271,8 +271,8 @@ ReadFileDurationMp3(const char *full_path, Meta &meta)
 	const i32 v1_size = ReadID3V1Size(infile, &meta);
 	const i32 v2_size = ReadID3V2Size(infile, &meta, full_path);
 	
-	if (v1_size == -1 || v2_size == -1) {
-		mtl_warn("ID3v 1 or 2 not present");
+	if (v2_size == -1) {
+		mtl_warn("ID3v 2 not present");
 		infile.close();
 		return false;
 	}
@@ -316,7 +316,7 @@ ReadFileDurationMp3(const char *full_path, Meta &meta)
 }
 
 bool
-ReadFileDurationFlac(const char *full_path, Meta &meta)
+ReadFlacFileMeta(const char *full_path, Meta &meta)
 {
 	std::ifstream infile(full_path, std::ios::binary);
 	
@@ -403,7 +403,7 @@ ReadFileDurationFlac(const char *full_path, Meta &meta)
 }
 
 bool
-ReadFileDurationOggOpus(const char *full_path, Meta &meta)
+ReadOggOpusFileMeta(const char *full_path, Meta &meta)
 {
 	int error;
 	OggOpusFile *opus_file = op_open_file(full_path, &error);

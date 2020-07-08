@@ -20,6 +20,9 @@ enum class SongBits: u8 {
 class Song {
 public:
 	
+	void
+	Apply(const audio::Info &audio_info);
+	
 	u8&
 	bits() { return bits_; }
 	

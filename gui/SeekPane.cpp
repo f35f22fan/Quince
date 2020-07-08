@@ -63,7 +63,7 @@ SeekPane::CreateGui()
 }
 
 void
-SeekPane::SetCurrentSong(Song *song)
+SeekPane::SetCurrentOrUpdateSong(Song *song)
 {
 	current_song_ = song;
 	

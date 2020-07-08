@@ -126,7 +126,7 @@ GST_STATE_PLAYING – the element is PLAYING, the GstClock is running and the da
 	gst_element_set_state(play_elem_, new_state);
 	song->state(new_state);
 	app_->UpdatePlayIcon(song);
-	app_->slider_pane()->SetCurrentSong(song);
+	app_->seek_pane()->SetCurrentOrUpdateSong(song);
 }
 
 void
@@ -146,7 +146,7 @@ void
 GstPlayer::SetSeekAndPause_Finish()
 {
 	Song *song = set_seek_and_pause_.song;
-	app_->slider_pane()->SetCurrentSong(song);
+	app_->seek_pane()->SetCurrentOrUpdateSong(song);
 	app_->UpdatePlayIcon(song);
 	
 	const i64 new_pos = song->playing_at();
@@ -162,7 +162,7 @@ GstPlayer::StopPlaying(Song *song)
 	gst_element_set_state(play_elem_, GST_STATE_NULL);
 	song->playing_at(-1);
 	song->state(GST_STATE_NULL);
-	app_->slider_pane()->SetCurrentSong(nullptr);
+	app_->seek_pane()->SetCurrentOrUpdateSong(nullptr);
 }
 
 void

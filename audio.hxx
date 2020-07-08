@@ -2,7 +2,21 @@
 
 #include "types.hxx"
 
-namespace quince::audio {
+#include <QByteArray>
+
+namespace quince {
+class Song;
+
+namespace audio {
+
+struct Info {
+	quince::Song *song = nullptr;
+	u64 duration;
+	i32 bitrate = -1;
+	i8 channels = -1;
+	i32 sample_rate = -1;
+	QByteArray uri;
+};
 
 enum class Pick : i8 {
 	Prev,
@@ -105,7 +119,7 @@ enum class Genre : i16 {
 // My extra additions:
 	Foreignbard, NuMetal, Electronics, RusRock, ClassicMetal, PopRock,
 	DancePop, PopDisco, EuroDisco, Romantic, BluesRock, PopDance, _90sPop,
-	_90sElectronic,
+	_90sElectronic, DarkAlternativeMetal,
 	Count
 };
 
@@ -157,7 +171,8 @@ static const char *GenreStringArray[] =
 // My exra additions:
  "Foreignbard", "Nu Metal", "Electronics", "Rus Rock", "Classic Metal",
  "Pop Rock", "Dance Pop", "Pop Disco", "Euro Disco", "Romantic",
- "Blues Rock", "Pop Dance", "90's Pop", "90's Electronic"
+ "Blues Rock", "Pop Dance", "90's Pop", "90's Electronic",
+ "Dark Alternative Metal"
 };
 
 static const char *GenresForInternalUsage[] =
@@ -206,7 +221,7 @@ static const char *GenresForInternalUsage[] =
 // my extra additions:
  "foreignbard", "numetal", "electronics", "rusrock", "classicmetal",
  "poprock", "dancepop", "popdisco", "eurodisco", "romantic", "bluesrock",
- "popdance", "90spop", "90selectronic"
+ "popdance", "90spop", "90selectronic", "darkalternativemetal"
 };
 
-}
+}} // quince::audio::

@@ -31,9 +31,9 @@ Playlist::CreateGui()
 	table_->setColumnWidth(i8(Column::Name), 500);
 	table_->setColumnWidth(i8(Column::Duration), 200);
 	table_->setColumnWidth(i8(Column::Bitrate), 90);
-	table_->setColumnWidth(i8(Column::BitsPerSample), 60);
-	table_->setColumnWidth(i8(Column::Channels), 60);
-	table_->setColumnWidth(i8(Column::SampleRate), 90);
+	table_->setColumnWidth(i8(Column::BitsPerSample), 90);
+	table_->setColumnWidth(i8(Column::Channels), 90);
+	table_->setColumnWidth(i8(Column::SampleRate), 110);
 	table_->setColumnWidth(i8(Column::Genre), 200);
 	
 	connect(table_, &QTableView::doubleClicked, this,

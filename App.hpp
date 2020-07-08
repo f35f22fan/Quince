@@ -27,11 +27,7 @@ struct DiscovererUserParams {
 	GstDiscoverer *discoverer;
 	GMainLoop *loop;
 	quince::App *app;
-};
-
-struct AudioInfo {
-	u64 duration;
-	QByteArray uri;
+	std::unordered_map<GstDiscoverer*, std::vector<Song*>> pending;
 };
 
 class App : public QMainWindow {
@@ -55,9 +51,6 @@ public:
 	int
 	GetIndex(gui::Playlist *playlist) const;
 	
-	void
-	GotAudioInfo(AudioInfo *info);
-	
 	Song*
 	GetCurrentSong(int *index = nullptr);
 	
@@ -67,8 +60,7 @@ public:
 	bool
 	InitDiscoverer();
 	
-	void
-	MessageAsyncDone();
+	void MessageAsyncDone();
 	
 	void
 	PlaylistComboIndexChanged(int index);
@@ -100,6 +92,9 @@ public:
 	void
 	RemoveSelectedSongs();
 	
+//	void
+//	ReportingAudioInfoFromDiscoverer(audio::Info *info);
+	
 	bool
 	SavePlaylistsToDisk();
 	
@@ -107,7 +102,7 @@ public:
 	SetActive(gui::Playlist *playlist);
 	
 	gui::SeekPane*
-	slider_pane() const { return seek_pane_; }
+	seek_pane() const { return seek_pane_; }
 	
 	void
 	TrayActivated(QSystemTrayIcon::ActivationReason reason);

@@ -118,8 +118,8 @@ static void print_topology (GstDiscovererStreamInfo *info, gint depth) {
 	}
 }
 
-/* This function is called every time the discoverer has information regarding
- * one of the URIs we provided.*/
+/* This function is called every time the discoverer has information
+ regarding one of the URIs we provided.*/
 static void on_discovered_cb (GstDiscoverer *discoverer,
 	GstDiscovererInfo *info,
 	GError *err, quince::DiscovererUserParams *user_params)
@@ -156,15 +156,13 @@ static void on_discovered_cb (GstDiscoverer *discoverer,
 	}
 	
 	if (result != GST_DISCOVERER_OK) {
-		g_printerr ("This URI cannot be played\n");
+		mtl_trace("This URI cannot be played");
 		return;
 	}
 	
 	/* If we got no error, show the retrieved information */
 	u64 nano = gst_discoverer_info_get_duration(info);
-	
-	quince::AudioInfo audio_info = {.duration = nano, .uri = uri};
-	user_params->app->GotAudioInfo(&audio_info);
+	quince::audio::Info audio_info = {.duration = nano, .uri = uri};
 	
 	if (false)
 	{
@@ -177,33 +175,47 @@ static void on_discovered_cb (GstDiscoverer *discoverer,
 		g_print ("Seekable: %s\n", (gst_discoverer_info_get_seekable (info) ? "yes" : "no"));
 	}
 	
-	if (false)
+	if (true)
 	{
 		GstDiscovererStreamInfo *sinfo = gst_discoverer_info_get_stream_info (info);
-		if (!sinfo)
-			return;
-		
-		g_print ("Stream information:\n");
-		
-		print_topology (sinfo, 1);
-		
-		
-		// ==> Mine
-		GList *audio_streams = gst_discoverer_info_get_audio_streams(info);
-		for (auto *l = audio_streams; l != NULL; l = l->next)
+
+		if (sinfo)
 		{
-			// do something with l->data
-			auto *audio_info = (GstDiscovererAudioInfo*)l->data;
-			guint bitrate = gst_discoverer_audio_info_get_bitrate(audio_info);
-			mtl_info("Bitrate: %u", bitrate);
-			guint channels =  gst_discoverer_audio_info_get_channels(audio_info);
-			mtl_info("Channels: %u", channels);
-			guint sample_rate = gst_discoverer_audio_info_get_sample_rate(audio_info);
-			mtl_info("Sample Rate: %u", sample_rate);
+//			print_topology (sinfo, 1);
+			GList *audio_streams = gst_discoverer_info_get_audio_streams(info);
+			for (auto *l = audio_streams; l != NULL; l = l->next)
+			{
+				auto *discov_audio_info = (GstDiscovererAudioInfo*)l->data;
+				audio_info.bitrate = gst_discoverer_audio_info_get_bitrate(discov_audio_info);
+				audio_info.channels =  gst_discoverer_audio_info_get_channels(discov_audio_info);
+				audio_info.sample_rate = gst_discoverer_audio_info_get_sample_rate(discov_audio_info);
+			}
+			
+			gst_discoverer_stream_info_unref (sinfo);
 		}
-		// <== Mine
+	}
+	
+	// Now find the quince::Song with corresponding uri and discoverer,
+	// then update the Song and the GUI.
+	auto item = user_params->pending.find(user_params->discoverer);
+	
+	if (item != user_params->pending.end()) {
+		std::vector<quince::Song*> &vec = item->second;
 		
-		gst_discoverer_stream_info_unref (sinfo);
+		for (int i = 0; i < vec.size(); i++) {
+			quince::Song *song = vec[i];
+			
+			if (song->uri() == uri) {
+				song->Apply(audio_info);
+				auto *table_model = user_params->app->active_table_model();
+				CHECK_PTR_VOID(table_model);
+				table_model->UpdateRangeDefault(i);
+				quince::gui::SeekPane *seek_pane = user_params->app->seek_pane();
+				
+				if (seek_pane->current_song() == song)
+					seek_pane->SetCurrentOrUpdateSong(song);
+			}
+		}
 	}
 }
 
@@ -212,6 +224,12 @@ static void on_discovered_cb (GstDiscoverer *discoverer,
 static void on_finished_cb (GstDiscoverer *discoverer,
 	quince::DiscovererUserParams *user_params)
 {
+	 // cleanup map
+		auto item = user_params->pending.find(user_params->discoverer);
+		
+		if (item != user_params->pending.end())
+			user_params->pending.erase(item);
+	
 	gst_discoverer_stop (user_params->discoverer); // Stop the discoverer process
 	g_object_unref (user_params->discoverer); // Free resources
 	g_main_loop_quit (user_params->loop);
@@ -340,14 +358,18 @@ App::AddBatch(QVector<quince::Song*> &vec)
 			started = true;
 		}
 		
-		// Add a request to process asynchronously the URI passed through the command line
+		// Add an asynchronous request to process the URI
 		auto uri_ba = song->uri().toLocal8Bit();
 		mtl_info("Adding request for %s", uri_ba.data());
+		
 		if (!gst_discoverer_discover_uri_async (user_params_.discoverer, uri_ba)) {
 			mtl_warn("Failed to start discovering URI '%s'\n", uri_ba.data());
 			g_object_unref (user_params_.discoverer);
 			return false;
 		}
+		
+		std::vector<quince::Song*> &vec = user_params_.pending[user_params_.discoverer];
+		vec.push_back(song);
 	}
 	
 	if (started)
@@ -777,24 +799,6 @@ App::GetIndex(gui::Playlist *playlist) const
 	return -1;
 }
 
-void
-App::GotAudioInfo(AudioInfo *info)
-{
-	auto d = quince::Duration::FromNs(info->duration);
-	auto ds = d.toDurationString().toLocal8Bit();
-	
-	auto *songs = active_playlist_songs();
-	CHECK_PTR_VOID(songs);
-	
-	for (quince::Song *song: *songs)
-	{
-		if (song->uri() == info->uri) {
-			song->meta().duration(info->duration);
-			break;
-		}
-	}
-}
-
 bool
 App::InitDiscoverer()
 {
@@ -889,39 +893,36 @@ App::LoadPlaylists()
 void
 App::MessageAsyncDone()
 {
-	Song *song = GetCurrentSong();
+//	int row_index;
+//	Song *song = GetCurrentSong(&row_index);
+//	CHECK_PTR_VOID(song);
+//	GstState state;
+//	GstStateChangeReturn ret = gst_element_get_state (play_elem(),
+//		&state, NULL, GST_CLOCK_TIME_NONE);
 	
-	if (song == nullptr) {
-		mtl_trace();
-		return;
-	}
+//	if (ret != GST_STATE_CHANGE_SUCCESS) {
+//		mtl_trace();
+//		return;
+//	}
 	
-	GstState state;
+//	//mtl_info("State is: %s", audio::StateToString(state));
 	
-	GstStateChangeReturn ret = gst_element_get_state (play_elem(),
-		&state, NULL, GST_CLOCK_TIME_NONE);
-	
-	if (ret != GST_STATE_CHANGE_SUCCESS) {
-		mtl_trace();
-		return;
-	}
-	
-	//mtl_info("State is: %s", audio::StateToString(state));
-	
-	if (!song->meta().is_duration_set())
-	{
-		i64 duration = -1;
-		gboolean ok = gst_element_query_duration (play_elem(),
-			GST_FORMAT_TIME, &duration);
-			
-		if (!ok) {
-			mtl_trace();
-			return;
-		}
+//	if (!song->meta().is_duration_set())
+//	{
+//		i64 duration = -1;
+//		gboolean ok = gst_element_query_duration (play_elem(),
+//			GST_FORMAT_TIME, &duration);
+//		CHECK_TRUE_VOID(ok);
+//		song->meta().duration(duration);
+//		mtl_info("DURATION IS: %ld", duration);
 		
-		song->meta().duration(duration);
-		mtl_info("DURATION IS: %ld", duration);
-	}
+//		auto *table_model = active_table_model();
+//		CHECK_PTR_VOID(table_model);
+//		table_model->UpdateRangeDefault(row_index);
+		
+//		if (seek_pane_->current_song() == song)
+//			seek_pane_->SetCurrentOrUpdateSong(song);
+//	}
 }
 
 GstElement*

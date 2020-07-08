@@ -16,7 +16,8 @@ public:
 	virtual ~SeekPane();
 	
 	void ActivePlaylistChanged(gui::Playlist *playlist);
-	void SetCurrentSong(Song *song);
+	Song *current_song() const { return current_song_; }
+	void SetCurrentOrUpdateSong(Song *song);
 	bool slider_dragged_by_user() const { return slider_dragged_by_user_; }
 	void SliderValueChanged(int value);
 	void UpdatePlaylistDuration(Playlist *playlist);

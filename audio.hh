@@ -25,13 +25,13 @@ void
 PrintBitsUchar(const char *comment, const uchar c);
 
 bool
-ReadFileDurationFlac(const char *full_path, Meta &meta);
+ReadFlacFileMeta(const char *full_path, Meta &meta);
 
 bool
-ReadFileDurationMp3(const char *full_path, Meta &meta);
+ReadMp3FileMeta(const char *full_path, Meta &meta);
 
 bool
-ReadFileDurationOggOpus(const char *full_path, Meta &meta);
+ReadOggOpusFileMeta(const char *full_path, Meta &meta);
 
 bool
 ReadFileMeta(const char *full_path, Meta &meta);

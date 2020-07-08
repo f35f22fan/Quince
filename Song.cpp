@@ -5,6 +5,16 @@
 
 namespace quince {
 
+void
+Song::Apply(const audio::Info &audio_info)
+{
+	meta_.bitrate(audio_info.bitrate);
+	meta_.channels(audio_info.channels);
+	meta_.sample_rate(audio_info.sample_rate);
+	meta_.duration(audio_info.duration);
+}
+
+
 Song*
 Song::From(quince::ByteArray &ba)
 {

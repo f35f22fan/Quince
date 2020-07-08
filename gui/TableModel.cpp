@@ -111,7 +111,8 @@ TableModel::data(const QModelIndex &index, int role) const
 				return QString::number(meta.bits_per_sample());
 		} else if (col == Column::SampleRate) {
 			if (meta.sample_rate() != -1) {
-				return QString::number(meta.sample_rate());
+				return QString::number(meta.sample_rate()) +
+					QLatin1String(" Hz");
 			}
 		} else if (col == Column::Genre) {
 			return audio::GenresToString(meta.genres());
@@ -149,7 +150,7 @@ TableModel::headerData(int section_i, Qt::Orientation orientation, int role) con
 			case Column::Channels:
 				return QLatin1String("Channels");
 			case Column::BitsPerSample:
-				return QLatin1String("Bits Per Sample");
+				return QLatin1String("BPS");//Bits Per Sample
 			case Column::SampleRate:
 				return QLatin1String("Sample Rate");
 			case Column::Genre:
@@ -217,7 +218,7 @@ TableModel::removeRows(int row, int count, const QModelIndex &parent)
 void
 TableModel::TimerHit()
 {
-	if (app_->slider_pane()->slider_dragged_by_user())
+	if (app_->seek_pane()->slider_dragged_by_user())
 		return;
 	
 	if (playing_row_ >= songs_.size())
