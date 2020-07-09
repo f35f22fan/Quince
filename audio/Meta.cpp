@@ -15,22 +15,24 @@ StartsWith4(const char *buf, const char *str)
 }
 
 i32
-Meta::InterpretTagV2Frame(const char *frame_start, const i32 max_size,
-	const char *full_path)
+Meta::InterpretTagV2Frame(const char *frame_start, const char *full_path)
 {
-	i32 size;
+	u32 size;
 	memcpy(&size, frame_start + 4, 4);
-	size = quince::audio::syncsafe(size);
+	size = quince::audio::syncsafe_nobit_discard(size);
 	
-	if (size <= 0)
+	if (size <= 0) {
+		mtl_info("No more frames");
 		return -1; // no more frames
+	}
 	
 	const auto str_buf = frame_start + 11;
 	auto str_len = size - 1;
 	
-	if (str_len > 50000) {
-		return -1;
-	}
+//	if (str_len > 50000) {
+//		mtl_trace();
+//		return -1;
+//	}
 	
 	i32 skip = 0;
 	
@@ -61,16 +63,14 @@ Meta::InterpretTagV2Frame(const char *frame_start, const i32 max_size,
 		artist_ = s;
 	} else if (StartsWith4(frame_start, "TCON")) {
 		field_name = "Genre/TCON";
-		
 		const QChar last_char = s.at(s.size() - 1);
 		
 		{ // workaround:
-			if (last_char.unicode() == 0x00)
+			if (last_char.unicode() == 0x00) {
 				s = s.left(s.size() - 1);
+			}
 		}
-		
 		audio::GenresFromString(s.midRef(0), genres_);
-		
 		if (genres_.isEmpty()) {
 			auto genre_ba = s.toLocal8Bit();
 			mtl_warn("At file: \"%s\"\nFailed to decode genre(s): \"%s\"",
@@ -81,12 +81,14 @@ Meta::InterpretTagV2Frame(const char *frame_start, const i32 max_size,
 	} else if (StartsWith4(frame_start, "TALB")) {
 		field_name = "Album/TALB";
 		album_ = s;
+	} else if (StartsWith4(frame_start, "APIC")) {
+		field_name = "Attached picture/APIC";
 	} else {
 		field_name = "(Unprocessed field)";
 	}
 	
-	// auto ba = s.toLocal8Bit();
-	// mtl_info("%s: \"%s\"", field_name, ba.data());
+	 auto ba = s.toLocal8Bit();
+	 mtl_info("%s: \"%s\"", field_name, ba.data());
 	
 	return size + 10;
 }

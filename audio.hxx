@@ -119,7 +119,7 @@ enum class Genre : i16 {
 // My extra additions:
 	Foreignbard, NuMetal, Electronics, RusRock, ClassicMetal, PopRock,
 	DancePop, PopDisco, EuroDisco, Romantic, BluesRock, PopDance, _90sPop,
-	_90sElectronic, DarkAlternativeMetal,
+	_90sElectronic, DarkAlternativeMetal, IndustrialRock,
 	Count
 };
 
@@ -172,7 +172,7 @@ static const char *GenreStringArray[] =
  "Foreignbard", "Nu Metal", "Electronics", "Rus Rock", "Classic Metal",
  "Pop Rock", "Dance Pop", "Pop Disco", "Euro Disco", "Romantic",
  "Blues Rock", "Pop Dance", "90's Pop", "90's Electronic",
- "Dark Alternative Metal"
+ "Dark Alternative Metal", "Industrial Rock"
 };
 
 static const char *GenresForInternalUsage[] =
@@ -221,7 +221,8 @@ static const char *GenresForInternalUsage[] =
 // my extra additions:
  "foreignbard", "numetal", "electronics", "rusrock", "classicmetal",
  "poprock", "dancepop", "popdisco", "eurodisco", "romantic", "bluesrock",
- "popdance", "90spop", "90selectronic", "darkalternativemetal"
+ "popdance", "90spop", "90selectronic", "darkalternativemetal",
+ "industrialrock"
 };
 
 }} // quince::audio::

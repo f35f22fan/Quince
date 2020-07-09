@@ -15,6 +15,9 @@ namespace quince::audio {
 bool
 GenresFromString(const QStringRef &s, QVector<Genre> &vec);
 
+void
+GenresFromStringSubroutine(const QString &s, const QChar delimiter, QVector<Genre> &vec);
+
 const char*
 GenreToString(const Genre g);
 
@@ -60,6 +63,9 @@ reverse_uchar(uchar b);
 //be "played". For more info, have fun Googling it.
 i32
 syncsafe(i32 i);
+
+u32
+syncsafe_nobit_discard(u32 i);
 
 const char*
 StateToString(const GstState state);

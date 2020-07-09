@@ -13,9 +13,11 @@ namespace quince::audio {
 bool
 GenresFromString(const QStringRef &genre_name, QVector<Genre> &vec)
 {
-	static const QRegularExpression regex =
-		QRegularExpression("[ \\-\\/\\+\\']");
-	QString s = genre_name.toString().toLower().replace(regex, "").replace('&', 'n');
+	auto ba1 = genre_name.toLocal8Bit();
+	mtl_info("Genre name: \"%s\"", ba1.data());
+	static const QRegularExpression regex = QRegularExpression("[ \\-\\/\\+\\']");
+	QString genre_string = genre_name.toString();
+	const QString s = genre_string.toLower().replace(regex, "").replace('&', 'n');
 	
 	if (s.startsWith('('))
 	{
@@ -40,10 +42,29 @@ GenresFromString(const QStringRef &genre_name, QVector<Genre> &vec)
 		return true;
 	}
 	
+	GenresFromStringSubroutine(s, ',', vec);
+	mtl_info("subroutine #1: %d", vec.size());
+
+	if (vec.isEmpty())
+	{
+		static const QRegularExpression regex2 = QRegularExpression("[ \\-\\+\\']");
+		QString s2 = genre_string.toLower().replace(regex2, "").replace('&', 'n');
+		GenresFromStringSubroutine(s2, '/', vec);
+		mtl_info("subroutine #2: %d", vec.size());
+	}
+	
+	return true;
+}
+
+void
+GenresFromStringSubroutine(const QString &s, const QChar delimiter, QVector<Genre> &vec)
+{
 	const int total_genres_count = int(Genre::Count);
-	QVector<QStringRef> genres = s.splitRef(',');
+	QVector<QStringRef> genres = s.splitRef(delimiter);
 	
 	for (const auto &str_genre: genres) {
+		auto ba2 = str_genre.toLocal8Bit();
+		mtl_info("Genre: %s", ba2.data());
 		
 		bool found = false;
 		
@@ -66,8 +87,6 @@ GenresFromString(const QStringRef &genre_name, QVector<Genre> &vec)
 			}
 		}
 	}
-	
-	return true;
 }
 
 const char*
@@ -211,16 +230,16 @@ ReadID3V2Size(std::ifstream& infile, Meta *meta, const char *full_path)
 	}
 	
 	i32 size = 0;
-	infile.read(reinterpret_cast<char*>(&size), sizeof size);
+	infile.read(reinterpret_cast<char*>(&size), 4);
 	size = syncsafe(size);
 	i32 so_far = 0;
 	
 	if (meta != nullptr && size > 0) {
-		char tag2[size];
-		infile.read(tag2, sizeof tag2);
+		char tagv2[size];
+		infile.read(tagv2, sizeof tagv2);
 		
 		while (so_far < size) {
-			i32 sz = meta->InterpretTagV2Frame(tag2 + so_far, size - so_far, full_path);
+			i32 sz = meta->InterpretTagV2Frame(tagv2 + so_far, full_path);
 			
 			if (sz == -1)
 				break; // no more frames
@@ -475,6 +494,17 @@ syncsafe(i32 i)
 	ret |= ((i & 0x007F0000) >>  9);
 	ret |= ((i & 0x00007F00) <<  6);
 	ret |= ((i & 0x0000007F) << 21);
+	return ret;
+}
+
+u32
+syncsafe_nobit_discard(u32 i)
+{
+	u32 ret = 0;
+	ret |= ((i & 0xFF000000) >> 24);
+	ret |= ((i & 0x00FF0000) >>  8);
+	ret |= ((i & 0x0000FF00) <<  8);
+	ret |= ((i & 0x000000FF) << 24);
 	return ret;
 }
 
