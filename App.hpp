@@ -39,23 +39,32 @@ public:
 	gui::Playlist*
 	active_playlist() const { return active_playlist_; }
 	
+	QVector<Song*>*
+	active_playlist_songs();
+	
 	gui::TableModel*
 	active_table_model();
 	
 	bool
 	AddBatch(QVector<quince::Song*> &vec);
 	
-	QVector<Song*>*
-	active_playlist_songs();
+	void
+	AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist);
 	
-	int
-	GetIndex(gui::Playlist *playlist) const;
+	gui::Playlist*
+	CreatePlaylist(const QString &name, int *index = nullptr);
+	
+	gui::Playlist*
+	GetComboCurrentPlaylist(int *pindex = nullptr);
 	
 	Song*
 	GetCurrentSong(int *index = nullptr);
 	
 	Song*
 	GetFirstSongInCurrentPlaylist();
+	
+	int
+	GetIndex(gui::Playlist *playlist) const;
 	
 	bool
 	InitDiscoverer();
@@ -92,9 +101,6 @@ public:
 	void
 	RemoveSelectedSongs();
 	
-//	void
-//	ReportingAudioInfoFromDiscoverer(audio::Info *info);
-	
 	bool
 	SavePlaylistsToDisk();
 	
@@ -123,8 +129,8 @@ private:
 	AddAction(QToolBar *tb, const QString &icon_name,
 		const QString &action_name, const char *tooltip = nullptr);
 	
-	void AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist);
-	void AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist);
+	void
+	AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist);
 	void AskAddSongFilesToPlaylist();
 	void AskDeletePlaylist();
 	void AskNewPlaylist();
@@ -133,10 +139,8 @@ private:
 	QToolBar* CreateMediaActionsToolBar();
 	QToolBar* CreatePlaylistActionsToolBar();
 	QTabBar* CreateTabBar();
-	gui::Playlist* CreatePlaylist(const QString &name, int *index = nullptr);
 	bool DeletePlaylist(gui::Playlist *p, int index);
 	u64 GenNewPlaylistId() const;
-	gui::Playlist* GetComboCurrentPlaylist(int *pindex);
 	void LoadPlaylist(const QString &full_path);
 	void LoadPlaylists();
 	int PickSong(QVector<Song*> *vec, const int current_song_index,
@@ -160,6 +164,7 @@ private:
 	QComboBox *playlists_cb_ = nullptr;
 	QVector<gui::Playlist*> playlists_;
 	gui::Playlist *active_playlist_ = nullptr;
+	gui::PlaylistStackWidget *playlist_stack_widget_ = nullptr;
 	QStackedLayout *playlist_stack_ = nullptr;
 	i32 last_playlist_index_ = -1;
 	QIcon app_icon_;

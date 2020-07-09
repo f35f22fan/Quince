@@ -10,6 +10,7 @@ enum class UpdateTableRange : u8 {
 };
 
 class Playlist;
+class PlaylistStackWidget;
 class SeekPane;
 class Table;
 class TableModel;

@@ -13,8 +13,8 @@ namespace quince::audio {
 bool
 GenresFromString(const QStringRef &genre_name, QVector<Genre> &vec)
 {
-	auto ba1 = genre_name.toLocal8Bit();
-	mtl_info("Genre name: \"%s\"", ba1.data());
+//	auto ba1 = genre_name.toLocal8Bit();
+//	mtl_info("Genre name: \"%s\"", ba1.data());
 	static const QRegularExpression regex = QRegularExpression("[ \\-\\/\\+\\']");
 	QString genre_string = genre_name.toString();
 	const QString s = genre_string.toLower().replace(regex, "").replace('&', 'n');
@@ -43,14 +43,14 @@ GenresFromString(const QStringRef &genre_name, QVector<Genre> &vec)
 	}
 	
 	GenresFromStringSubroutine(s, ',', vec);
-	mtl_info("subroutine #1: %d", vec.size());
+//	mtl_info("subroutine #1: %d", vec.size());
 
 	if (vec.isEmpty())
 	{
 		static const QRegularExpression regex2 = QRegularExpression("[ \\-\\+\\']");
 		QString s2 = genre_string.toLower().replace(regex2, "").replace('&', 'n');
 		GenresFromStringSubroutine(s2, '/', vec);
-		mtl_info("subroutine #2: %d", vec.size());
+//		mtl_info("subroutine #2: %d", vec.size());
 	}
 	
 	return true;
@@ -63,8 +63,8 @@ GenresFromStringSubroutine(const QString &s, const QChar delimiter, QVector<Genr
 	QVector<QStringRef> genres = s.splitRef(delimiter);
 	
 	for (const auto &str_genre: genres) {
-		auto ba2 = str_genre.toLocal8Bit();
-		mtl_info("Genre: %s", ba2.data());
+//		auto ba2 = str_genre.toLocal8Bit();
+//		mtl_info("Genre: %s", ba2.data());
 		
 		bool found = false;
 		

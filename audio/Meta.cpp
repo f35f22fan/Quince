@@ -22,17 +22,12 @@ Meta::InterpretTagV2Frame(const char *frame_start, const char *full_path)
 	size = quince::audio::syncsafe_nobit_discard(size);
 	
 	if (size <= 0) {
-		mtl_info("No more frames");
+		//mtl_info("No more frames");
 		return -1; // no more frames
 	}
 	
 	const auto str_buf = frame_start + 11;
 	auto str_len = size - 1;
-	
-//	if (str_len > 50000) {
-//		mtl_trace();
-//		return -1;
-//	}
 	
 	i32 skip = 0;
 	
@@ -52,6 +47,8 @@ Meta::InterpretTagV2Frame(const char *frame_start, const char *full_path)
 	} else {
 		s = QString::fromLatin1(str_buf, str_len);
 	}
+	
+	s = s.trimmed();
 	
 	const char *field_name = nullptr;
 	
@@ -87,8 +84,8 @@ Meta::InterpretTagV2Frame(const char *frame_start, const char *full_path)
 		field_name = "(Unprocessed field)";
 	}
 	
-	 auto ba = s.toLocal8Bit();
-	 mtl_info("%s: \"%s\"", field_name, ba.data());
+	 //auto ba = s.toLocal8Bit();
+	 //mtl_info("%s: \"%s\"", field_name, ba.data());
 	
 	return size + 10;
 }

@@ -65,7 +65,7 @@ Song::FromFile(const io::File &file)
 	audio::Meta &meta = p->meta();
 	meta.audio_codec(audio_codec);
 	
-	QString uri_path = QLatin1String("file://") + file.dir_path + file.name;
+	QString uri_path = QLatin1String("file://") + file.dir_path + '/' + file.name;
 	p->uri(QUrl(uri_path).toEncoded());
 	
 	return p;

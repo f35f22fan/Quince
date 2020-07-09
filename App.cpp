@@ -6,6 +6,7 @@
 #include "Duration.hpp"
 #include "GstPlayer.hpp"
 #include "gui/Playlist.hpp"
+#include "gui/PlaylistStackWidget.hpp"
 #include "gui/SeekPane.hpp"
 #include "gui/Table.hpp"
 #include "gui/TableModel.hpp"
@@ -407,10 +408,15 @@ App::AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist)
 	
 	for (io::File &file: files)
 	{
-		auto *song = Song::FromFile(file);
-		
-		if (song != nullptr)
-			songs_to_add.append(song);
+		if (file.type_ == io::FileType::Dir) {
+			QString full_path = file.dir_path + '/' + file.name;
+			AddFolderToPlaylist(full_path, playlist);
+		} else {
+			auto *song = Song::FromFile(file);
+			
+			if (song != nullptr)
+				songs_to_add.append(song);
+		}
 	}
 	
 	if (songs_to_add.isEmpty())
@@ -418,7 +424,6 @@ App::AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist)
 	
 	AddBatch(songs_to_add);
 	model->InsertRows(songs.size(), songs_to_add);
-	
 }
 
 void
@@ -432,7 +437,8 @@ App::AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist)
 	QVector<io::File> files;
 	
 	if (io::ListFiles(dir_path, files, 0, io::IsSongExtension) != io::Err::Ok) {
-		mtl_trace();
+		auto ba = dir_path.toLocal8Bit();
+		mtl_trace("dir path: %s", ba.data());
 		return;
 	}
 	
@@ -479,19 +485,12 @@ App::AskAddSongFilesToPlaylist()
 	for (auto next: filenames) {
 		auto ba = next.toLocal8Bit();
 		
-		if (lstat(ba.data(), &st) == 0) {
-			if (S_ISDIR(st.st_mode)) {
-				AddFolderToPlaylist(next, playlist);
-			} else {
-				//files.clear();
-				io::File file;
-				
-				if (io::FileFromPath(file, next) == io::Err::Ok)
-				{
-					files.append(file);
-					//AddFilesToPlaylist(files, playlist);
-				}
-			}
+		if (lstat(ba.data(), &st) == 0)
+		{
+			io::File file;
+			
+			if (io::FileFromPath(file, next) == io::Err::Ok)
+				files.append(file);
 		}
 	}
 	
@@ -509,13 +508,13 @@ App::AskDeletePlaylist()
 	CHECK_PTR_VOID(playlist);
 	QString question = QString("Delete playlist <b>") +
 		playlist->name() + QLatin1String("</b>?");
-	
 	QMessageBox::StandardButton reply =
 		QMessageBox::question(this,
 		"Confirm", question, QMessageBox::Ok | QMessageBox::Cancel);
 	
-	if (reply == QMessageBox::Ok)
+	if (reply == QMessageBox::Ok) {
 		DeletePlaylist(playlist, index);
+	}
 }
 
 void
@@ -588,10 +587,10 @@ App::CreateGui()
 	seek_pane_ = new gui::SeekPane(this);
 	layout->addWidget(seek_pane_);
 
-	QWidget *stack_widget = new QWidget(central_widget);
+	playlist_stack_widget_ = new gui::PlaylistStackWidget(central_widget, this);
 	playlist_stack_ = new QStackedLayout();
-	stack_widget->setLayout(playlist_stack_);
-	layout->addWidget(stack_widget);
+	playlist_stack_widget_->setLayout(playlist_stack_);
+	layout->addWidget(playlist_stack_widget_);
 	
 	addToolBar(Qt::BottomToolBarArea, CreatePlaylistActionsToolBar());
 	
@@ -641,7 +640,7 @@ App::CreateMediaActionsToolBar()
 gui::Playlist*
 App::CreatePlaylist(const QString &name, int *index)
 {
-	for (gui::Playlist *p : playlists_)
+	for (gui::Playlist *p: playlists_)
 	{
 		if (p->name() == name)
 			return nullptr;
@@ -655,6 +654,8 @@ App::CreatePlaylist(const QString &name, int *index)
 	
 	if (index != nullptr)
 		*index = n;
+	
+	SavePlaylistSimple(playlist);
 	
 	return playlist;
 }
@@ -710,22 +711,24 @@ App::DeletePlaylist(gui::Playlist *p, int index)
 	auto ba = full_path.toLocal8Bit();
 	int ret = remove(ba.data());
 	
-	if (ret != 0)
+	if (ret != 0) {
+		mtl_warn("Failed to delete file \"%s\"", ba.data());
 		return false;
-	
+	}
+
 	playlists_cb_->removeItem(index);
 	playlists_.removeAt(index);
 	playlist_stack_->removeWidget(p);
 	delete p;
-	
 	index = playlists_cb_->currentIndex();
 	
 	if (was_active)
 	{
-		if ((index >= 0) && (index < playlists_.size()))
+		if ((index >= 0) && (index < playlists_.size())) {
 			active_playlist_ = playlists_[index];
-		else
+		} else {
 			active_playlist_ = nullptr;
+		}
 	}
 	
 	return true;

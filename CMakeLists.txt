@@ -73,6 +73,7 @@ set(src_files
     GstPlayer.cpp GstPlayer.hpp
     gui/decl.hxx
     gui/Playlist.cpp gui/Playlist.hpp
+    gui/PlaylistStackWidget.cpp gui/PlaylistStackWidget.hpp
     gui/SeekPane.cpp gui/SeekPane.hpp
     gui/Table.cpp gui/Table.hpp
     gui/TableModel.cpp gui/TableModel.hpp
