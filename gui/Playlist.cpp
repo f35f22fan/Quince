@@ -1,6 +1,7 @@
 #include "Playlist.hpp"
 
 #include "../App.hpp"
+#include "../io/File.hpp"
 #include "../GstPlayer.hpp"
 #include "../Song.hpp"
 #include "Table.hpp"
@@ -53,6 +54,7 @@ Playlist::dragEnterEvent(QDragEnterEvent *event)
 	const QMimeData *mimedata = event->mimeData();
 	
 	if (mimedata->hasUrls()) {
+		mtl_trace();
 		event->acceptProposedAction();
 	}
 }
@@ -61,12 +63,14 @@ void
 Playlist::dropEvent(QDropEvent *event)
 {
 	if (event->mimeData()->hasUrls()) {
-		
 		gui::Playlist *playlist = app_->GetComboCurrentPlaylist();
 		
 		if (playlist == nullptr) {
 			mtl_warn("Should never happen");
 			return;
+		} else {
+//			auto ba = playlist->name().toLocal8Bit();
+//			mtl_info("Playlist name: %s", ba.data());
 		}
 		
 		QVector<io::File> files;
@@ -76,15 +80,13 @@ Playlist::dropEvent(QDropEvent *event)
 			QString path = url.path();
 			io::File file;
 			
-			if (io::FileFromPath(file, path) != io::Err::Ok)
-				continue;
-			
-//			auto ba = path.toLocal8Bit();
-//			mtl_info("\"%s\"", ba.data());
-			files.append(file);
+			if (io::FileFromPath(file, path) == io::Err::Ok) {
+//				auto ba = file.build_full_path().toLocal8Bit();
+//				mtl_info("Adding file: \"%s\"", ba.data());
+				files.append(file);
+			}
 		}
 		
-//		mtl_info("Adding %d files", files.size());
 		app_->AddFilesToPlaylist(files, playlist);
 	}
 }

@@ -1,5 +1,7 @@
 #include "Song.hpp"
+
 #include "ByteArray.hpp"
+#include "io/File.hpp"
 
 #include <QUrl>
 
@@ -47,14 +49,21 @@ Song::From(quince::ByteArray &ba)
 Song*
 Song::FromFile(const io::File &file)
 {
-	audio::Codec audio_codec = audio::Codec::Unknown;
-	QString lower = file.name.toLower();
+	QStringRef ext = file.Extension();
 	
-	if (lower.endsWith(".mp3"))
+	if (ext.isNull()) {
+		mtl_info("file extension is null");
+		return nullptr;
+	}
+	
+	QString lower = ext.toString().toLower();
+	audio::Codec audio_codec = audio::Codec::Unknown;
+	
+	if (lower == QLatin1String("mp3"))
 		audio_codec = audio::Codec::Mp3;
-	else if (lower.endsWith(".flac"))
+	else if (lower == QLatin1String("flac"))
 		audio_codec = audio::Codec::Flac;
-	else if (lower.endsWith(".opus"))
+	else if (lower == QLatin1String("opus"))
 		audio_codec = audio::Codec::OggOpus;
 	else
 		return nullptr;
@@ -65,7 +74,7 @@ Song::FromFile(const io::File &file)
 	audio::Meta &meta = p->meta();
 	meta.audio_codec(audio_codec);
 	
-	QString uri_path = QLatin1String("file://") + file.dir_path + '/' + file.name;
+	QString uri_path = QLatin1String("file://") + file.build_full_path();
 	p->uri(QUrl(uri_path).toEncoded());
 	
 	return p;

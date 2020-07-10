@@ -77,6 +77,7 @@ set(src_files
     gui/SeekPane.cpp gui/SeekPane.hpp
     gui/Table.cpp gui/Table.hpp
     gui/TableModel.cpp gui/TableModel.hpp
+    io/File.cpp io/File.hpp
     io/io.cc io/io.hh io/io.hxx
     main.cpp err.hpp
     quince.hh quince.cc

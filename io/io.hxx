@@ -5,7 +5,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-namespace io {
+namespace quince::io {
+
+class File;
 
 static const mode_t DirPermissions = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
 static const mode_t FilePermissions = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
@@ -48,14 +50,6 @@ struct FileID {
 	Initialized() const {
 		return inode_number != 0 || device_id != 0;
 	}
-};
-
-struct File {
-	QString name;
-	QString dir_path;
-	i64 size = -1;
-	FileType type_ = FileType::Unknown;
-	FileID id;
 };
 
 enum class ListOptions : u8 {

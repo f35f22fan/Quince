@@ -1,5 +1,6 @@
 #include "io.hh"
 
+#include "File.hpp"
 #include "../err.hpp"
 #include "../ByteArray.hpp"
 
@@ -10,7 +11,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-namespace io {
+namespace quince::io {
 
 bool
 EnsureDir(const QString &dir_path, const QString &subdir)
@@ -71,7 +72,8 @@ FileFromPath(io::File &file, const QString &full_path)
 }
 
 void
-FillIn(io::File &file, const struct stat &st, const QString &dir_path, const QString  &name)
+FillIn(io::File &file, const struct stat &st, const QString &dir_path,
+	const QString &name)
 {
 	using io::FileType;
 	file.name = name;

@@ -1,6 +1,7 @@
 #include "PlaylistStackWidget.hpp"
 
 #include "../App.hpp"
+#include "../io/File.hpp"
 
 #include <QDragEnterEvent>
 #include <QMimeData>

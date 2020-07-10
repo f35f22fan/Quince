@@ -10,6 +10,7 @@
 #include "gui/SeekPane.hpp"
 #include "gui/Table.hpp"
 #include "gui/TableModel.hpp"
+#include "io/File.hpp"
 #include "io/io.hh"
 #include "quince.hh"
 #include "Song.hpp"
@@ -408,14 +409,18 @@ App::AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist)
 	
 	for (io::File &file: files)
 	{
-		if (file.type_ == io::FileType::Dir) {
-			QString full_path = file.dir_path + '/' + file.name;
+		if (file.is_dir()) {
+			QString full_path = file.build_full_path();
 			AddFolderToPlaylist(full_path, playlist);
 		} else {
 			auto *song = Song::FromFile(file);
+//			auto song_path = file.build_full_path().toLocal8Bit();
 			
-			if (song != nullptr)
+			if (song != nullptr) {
 				songs_to_add.append(song);
+			} else {
+//				mtl_info("Song is null: \"%s\"", song_path.data());
+			}
 		}
 	}
 	

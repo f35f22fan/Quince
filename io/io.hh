@@ -15,7 +15,7 @@
 #include <QStringRef>
 #include <QVector>
 
-namespace io {
+namespace quince::io {
 
 typedef bool (*FilterFunc)(const QString &dir_path, const QString &name);
 
