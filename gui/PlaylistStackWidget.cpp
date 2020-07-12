@@ -35,14 +35,12 @@ PlaylistStackWidget::dropEvent(QDropEvent *event)
 		gui::Playlist *playlist = app_->GetComboCurrentPlaylist();
 		
 		if (playlist == nullptr) {
-			auto *new_one = app_->CreatePlaylist(QLatin1String("New Playlist"));
+			auto *new_one = app_->CreatePlaylist(QLatin1String("New Playlist"), true);
 			
 			if (new_one == nullptr) {
 				mtl_trace();
 				return;
 			}
-			
-			app_->SetActive(new_one);
 			
 			playlist = app_->active_playlist();
 			

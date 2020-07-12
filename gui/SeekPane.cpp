@@ -11,7 +11,7 @@
 #include <QBoxLayout>
 #include <time.h>
 
-const i64 NS_MS_GAP = 1000000L;
+const i64 NS_MS_RATIO = 1000000L;
 
 namespace quince::gui {
 
@@ -30,13 +30,11 @@ SeekPane::ActivePlaylistChanged(gui::Playlist *playlist)
 {
 	CHECK_PTR_VOID(playlist);
 	UpdatePlaylistDuration(playlist);
-	
-	i32 song_index;
-	Song *song = playlist->GetCurrentSong(&song_index);
-	i64 new_pos = (song == nullptr) ? 0 : song->playing_at();
-	slider_->setValue(new_pos / NS_MS_GAP);
-	SetLabelValue(position_label_, new_pos);
-	SetLabelValue(duration_label_, new_pos);
+	SetCurrentOrUpdate(playlist->GetCurrentSong());
+//	i64 new_pos = (song == nullptr) ? 0 : song->playing_at();
+//	slider_->setValue(new_pos / NS_MS_RATIO);
+//	SetLabelValue(position_label_, new_pos);
+//	SetLabelValue(duration_label_, new_pos);
 }
 
 void
@@ -62,18 +60,29 @@ SeekPane::CreateGui()
 	layout->addWidget(playlist_duration_);
 }
 
-void
-SeekPane::SetCurrentOrUpdateSong(Song *song)
+bool
+SeekPane::IsActive(Song *song)
 {
-	current_song_ = song;
+	return song == temp_song_info_.song;
+}
+
+void
+SeekPane::SetCurrentOrUpdate(Song *song)
+{
 	
-	if (current_song_ != nullptr)
+	if (song != nullptr)
 	{
+		song->FillIn(temp_song_info_);
 		const i64 max = song->meta().duration();
-		slider_->setMaximum(max / NS_MS_GAP);
+		slider_->setMaximum(max / NS_MS_RATIO);
 		SetLabelValue(duration_label_, max);
 	} else {
+		// leave temp_song_info_ as is to have info about the removed song
+		// from the playlist that is still playing. Well actually no.
+		temp_song_info_ = {};
+		slider_->setMaximum(0);
 		SetLabelValue(duration_label_, -1);
+		SetLabelValue(position_label_, -1);
 	}
 }
 
@@ -101,7 +110,7 @@ SeekPane::SliderPressed()
 void
 SeekPane::SliderReleased()
 {
-	i64 pos = i64(slider_->value()) * NS_MS_GAP;
+	i64 pos = i64(slider_->value()) * NS_MS_RATIO;
 	app_->player()->SeekTo(pos);
 	slider_dragged_by_user_ = false;
 }
@@ -109,7 +118,7 @@ SeekPane::SliderReleased()
 void
 SeekPane::SliderValueChanged(int value)
 {
-	if (slider_dragged_by_user_ && current_song_ != nullptr)
+	if (slider_dragged_by_user_ && temp_song_info_.song != nullptr)
 	{
 		timespec now;
 		
@@ -122,7 +131,7 @@ SeekPane::SliderValueChanged(int value)
 		timespec diff;
 		audio::timespec_diff(&last_seeked_, &now, &diff);
 		i64 ms = diff.tv_sec * 1000L + diff.tv_nsec / 1000000L;
-		const i64 nano = i64(value) * NS_MS_GAP;
+		const i64 nano = i64(value) * NS_MS_RATIO;
 		
 		if (ms > 300)
 		{
@@ -168,7 +177,7 @@ SeekPane::UpdatePosition(const i64 new_pos)
 	
 	if (!slider_dragged_by_user_)
 	{
-		slider_->setValue(new_pos / NS_MS_GAP);
+		slider_->setValue(new_pos / NS_MS_RATIO);
 	}
 }
 

@@ -144,7 +144,7 @@ Playlist::PlaylistDoubleClicked(QModelIndex index)
 	}
 
 	Song *song = songs[row];
-	app_->player()->PlayPause(song);
+	app_->player()->Play(song);
 	song->playing_at(0);
 	table_model_->UpdateRange(row, gui::Column::Name,
 		last_playing, gui::Column::Duration);

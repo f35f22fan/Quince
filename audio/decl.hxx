@@ -3,5 +3,5 @@
 namespace quince::audio {
 
 class Meta;
-
+class TempSongInfo;
 }

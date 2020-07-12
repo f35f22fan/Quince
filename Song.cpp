@@ -1,5 +1,6 @@
 #include "Song.hpp"
 
+#include "audio/TempSongInfo.hpp"
 #include "ByteArray.hpp"
 #include "io/File.hpp"
 
@@ -16,6 +17,15 @@ Song::Apply(const audio::Info &audio_info)
 	meta_.duration(audio_info.duration);
 }
 
+void
+Song::FillIn(audio::TempSongInfo &temp_song_info)
+{
+	temp_song_info.duration = meta_.duration();
+	temp_song_info.song = this;
+	temp_song_info.uri = uri_;
+	temp_song_info.playing_at = playing_at_;
+	temp_song_info.state_ = state_;
+}
 
 Song*
 Song::From(quince::ByteArray &ba)

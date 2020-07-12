@@ -19,7 +19,7 @@ public:
 	CreateGui();
 	
 	Song*
-	GetCurrentSong(int *index);
+	GetCurrentSong(int *index = nullptr);
 	
 	bool
 	GetFullPath(QString &full_path) const;

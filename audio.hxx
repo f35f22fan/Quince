@@ -3,6 +3,7 @@
 #include "types.hxx"
 
 #include <QByteArray>
+#include <QString>
 
 namespace quince {
 class Song;

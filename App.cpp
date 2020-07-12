@@ -214,8 +214,8 @@ static void on_discovered_cb (GstDiscoverer *discoverer,
 				table_model->UpdateRangeDefault(i);
 				quince::gui::SeekPane *seek_pane = user_params->app->seek_pane();
 				
-				if (seek_pane->current_song() == song)
-					seek_pane->SetCurrentOrUpdateSong(song);
+				if (seek_pane->IsActive(song))
+					seek_pane->SetCurrentOrUpdate(song);
 			}
 		}
 	}
@@ -476,7 +476,7 @@ App::AskAddSongFilesToPlaylist()
 	if (playlist == nullptr)
 	{
 		if (playlists_.isEmpty()) {
-			playlist = CreatePlaylist("New Playlist");
+			playlist = CreatePlaylist("New Playlist", true);
 		} else {
 			mtl_warn("Can't get current playlist");
 			return;
@@ -532,7 +532,7 @@ App::AskNewPlaylist()
 		QLineEdit::Normal, "New Playlist", &ok);
 	
 	if (ok && !text.isEmpty())
-		CreatePlaylist(text);
+		CreatePlaylist(text, true);
 }
 
 void
@@ -643,7 +643,7 @@ App::CreateMediaActionsToolBar()
 }
 
 gui::Playlist*
-App::CreatePlaylist(const QString &name, int *index)
+App::CreatePlaylist(const QString &name, const bool set_active, int *index)
 {
 	for (gui::Playlist *p: playlists_)
 	{
@@ -661,6 +661,9 @@ App::CreatePlaylist(const QString &name, int *index)
 		*index = n;
 	
 	SavePlaylistSimple(playlist);
+	
+	if (set_active)
+		SetActive(playlist);
 	
 	return playlist;
 }
@@ -853,7 +856,7 @@ App::LoadPlaylist(const QString &full_path)
 	
 	QString playlist_name = ba.next_string();
 	const bool is_active = ba.next_u8() == 1;
-	auto *playlist = CreatePlaylist(playlist_name);
+	auto *playlist = CreatePlaylist(playlist_name, false);
 	CHECK_PTR_VOID(playlist);
 	auto &songs = playlist->songs();
 	const i32 song_count = ba.next_i32();
@@ -896,6 +899,50 @@ App::LoadPlaylists()
 		if (playlists_.size() == 1)
 			SetActive(playlists_[0]);
 	}
+}
+
+void
+App::MediaPause()
+{
+	int song_index = -1;
+	Song *song = GetCurrentSong(&song_index);
+	player_->Pause(song);
+	
+	if (song_index != -1)
+		active_table_model()->UpdateRangeDefault(song_index);
+}
+
+void
+App::MediaPlay()
+{
+	int song_index = -1;
+	Song *song = GetCurrentSong(&song_index);
+	
+	if (song == nullptr)
+	{
+		if (last_play_state_ == GST_STATE_PAUSED) {
+			player_->Play(nullptr);
+			return;
+		}
+		
+		song = GetFirstSongInCurrentPlaylist();
+		CHECK_PTR_VOID(song);
+		song_index = 0;
+	}
+	
+	player_->Play(song);
+	
+	if (song_index != -1)
+		active_table_model()->UpdateRangeDefault(song_index);
+}
+
+void
+App::MediaPlayPause()
+{
+	if (last_play_state_ == GST_STATE_NULL || last_play_state_ == GST_STATE_PAUSED)
+		MediaPlay();
+	else
+		MediaPause();
 }
 
 void
@@ -964,7 +1011,7 @@ App::PlaySong(const audio::Pick direction)
 	}
 	
 	Song *playing_song = (*vec)[song_index];
-	player_->PlayPause(playing_song);
+	player_->Play(playing_song);
 	active_table_model()->UpdateRangeDefault(song_index);
 }
 
@@ -1022,13 +1069,12 @@ App::PlayStop()
 {
 	int index;
 	Song *song = GetCurrentSong(&index);
-	
-	if (song == nullptr)
-		return;
-	
 	player_->StopPlaying(song);
-	active_table_model()->UpdateRangeDefault(index);
-	UpdatePlayIcon(song);
+	
+	if (song != nullptr)
+		active_table_model()->UpdateRangeDefault(index);
+	
+	UpdatePlayIcon(GST_STATE_NULL);
 }
 
 void
@@ -1039,23 +1085,7 @@ App::ProcessAction(const QString &action_name)
 	
 	if (action_name == actions::MediaPlayPause)
 	{
-		int song_index = -1;
-		Song *playing_song = GetCurrentSong(&song_index);
-		
-		if (playing_song == nullptr)
-		{
-			playing_song = GetFirstSongInCurrentPlaylist();
-			
-			if (playing_song == nullptr) {
-				mtl_trace();
-				return;
-			}
-			
-			song_index = 0;
-		}
-		
-		player_->PlayPause(playing_song);
-		active_table_model()->UpdateRangeDefault(song_index);
+		MediaPlayPause();
 	} else if (action_name == actions::MediaPlayNext) {
 		PlaySong(audio::Pick::Next);
 	} else if (action_name == actions::MediaPlayPrev) {
@@ -1139,7 +1169,7 @@ App::ReachedEndOfStream()
 		PlaySong(audio::Pick::Next);
 	} else if (play_mode_ == audio::PlayMode::RepeatTrack) {
 		auto *song = (*vec)[last_playing];
-		player_->PlayPause(song);
+		player_->Play(song);
 		active_table_model()->UpdateRangeDefault(last_playing);
 	}
 }
@@ -1385,14 +1415,14 @@ App::TrayActivated(QSystemTrayIcon::ActivationReason reason)
 }
 
 void
-App::UpdatePlayIcon(Song *song)
+App::UpdatePlayIcon(const GstState new_state)
 {
 	const char *icon_name;
 	
-	if (song == nullptr) {
+	if (new_state == GST_STATE_NULL || new_state == GST_STATE_PLAYING) {
 		icon_name = ICON_NAME_PLAY;
 	} else {
-		icon_name = song->is_playing() ? ICON_NAME_PAUSED : ICON_NAME_PLAY;
+		icon_name = ICON_NAME_PAUSED;
 	}
 	
 	play_pause_action_->setIcon(QIcon::fromTheme(icon_name));
@@ -1401,10 +1431,11 @@ App::UpdatePlayIcon(Song *song)
 gui::UpdateTableRange
 App::UpdatePlayingSongPosition(const i64 pos_is_known)
 {
-	Song *song = GetCurrentSong();
+	audio::TempSongInfo &tsi = player_->temp_song_info();
 	
-	if (song == nullptr || !song->is_playing_or_paused())
+	if (!tsi.has_data()) {
 		return gui::UpdateTableRange::OneColumn;
+	}
 	
 	i64 position = -1;
 	
@@ -1417,26 +1448,12 @@ App::UpdatePlayingSongPosition(const i64 pos_is_known)
 		return gui::UpdateTableRange::OneColumn;
 	}
 	
-	song->playing_at(position);
+	auto *song = GetCurrentSong();
 	
-	if (!song->meta().is_duration_set())
-	{
-		mtl_warn("WTH");
-		/*
-		duration = -1;
-		gboolean ok = gst_element_query_duration (play_elem,
-			GST_FORMAT_TIME, &duration);
-			
-		if (!ok) {
-			mtl_trace();
-			return false;
-		}
-		song->meta().duration(duration);
-		*/
-		return gui::UpdateTableRange::WholeRow;
-		
-	}
+	if (song != nullptr)
+		song->playing_at(position);
 	
+	tsi.playing_at = position;
 	seek_pane_->UpdatePosition(position);
 	
 	return gui::UpdateTableRange::OneColumn;

@@ -41,36 +41,35 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 		} else if (ssp.pending2) {
 			ssp.pending2 = false;
 			app->UpdatePlayingSongPosition(ssp.new_pos);
-			app->UpdatePlayIcon(ssp.song);
 		} else {
 			app->MessageAsyncDone();
 		}
 		break;
 	};
 	
-//	case GST_MESSAGE_STATE_CHANGED: {
-//		mtl_info("state changed");
-//	};
+	/*case GST_MESSAGE_STATE_CHANGED: {
+		mtl_info("state changed");
+	};
 	
-//	case GST_MESSAGE_STEP_DONE: {
-//		mtl_info("Step done");
-//	}
+	case GST_MESSAGE_STEP_DONE: {
+		mtl_info("Step done");
+	}
 	
-//	case GST_MESSAGE_SEGMENT_START: {
-//		mtl_info("Segment start");
-//	}
+	case GST_MESSAGE_SEGMENT_START: {
+		mtl_info("Segment start");
+	}
 	
-//	case GST_MESSAGE_SEGMENT_DONE: {
-//		mtl_info("Segment done");
-//	}
+	case GST_MESSAGE_SEGMENT_DONE: {
+		mtl_info("Segment done");
+	}
 		
-//	case GST_MESSAGE_DURATION: {
-//		mtl_info("Duration");
-//	}
+	case GST_MESSAGE_DURATION: {
+		mtl_info("Duration");
+	}
 	
-//	case GST_MESSAGE_REQUEST_STATE: {
-//		mtl_info("request state");
-//	}
+	case GST_MESSAGE_REQUEST_STATE: {
+		mtl_info("request state");
+	} */
 	
 	default: {
 		//mtl_info("other");
@@ -104,7 +103,7 @@ GstPlayer::InitGst(int argc, char *argv[])
 }
 
 void
-GstPlayer::PlayPause(Song *song)
+GstPlayer::Pause(Song *song)
 {
 /*
 GST_STATE_VOID_PENDING – no pending state.
@@ -113,20 +112,43 @@ GST_STATE_READY – the element is ready to go to PAUSED.
 GST_STATE_PAUSED – the element is PAUSED, it is ready to accept and process data. Sink elements however only accept one buffer and then block.
 GST_STATE_PLAYING – the element is PLAYING, the GstClock is running and the data is flowing. 
 */
-	GstState new_state = song->is_playing()
-		? GST_STATE_PAUSED : GST_STATE_PLAYING;
+	GstState new_state = GST_STATE_PAUSED;
+	gst_element_set_state(play_elem_, new_state);
 	
-	if (!song->is_playing_or_paused())
-	{
-		gst_element_set_state(play_elem_, GST_STATE_NULL);
-		auto ba = song->uri().toLocal8Bit();
-		g_object_set(G_OBJECT(play_elem_), "uri", ba.data(), NULL);
+	if (song != nullptr) {
+		song->state(new_state);
+		app_->seek_pane()->SetCurrentOrUpdate(song);
 	}
 	
+	app_->UpdatePlayIcon(GST_STATE_PLAYING);
+	app_->last_play_state(new_state);
+}
+
+void
+GstPlayer::Play(Song *song)
+{
+	if (song != nullptr)
+	{
+		song->FillIn(temp_song_info_);
+		
+		if (!song->is_playing_or_paused())
+		{
+			gst_element_set_state(play_elem_, GST_STATE_NULL);
+			auto ba = song->uri().toLocal8Bit();
+			g_object_set(G_OBJECT(play_elem_), "uri", ba.data(), NULL);
+		}
+	}
+	
+	GstState new_state = GST_STATE_PLAYING;
 	gst_element_set_state(play_elem_, new_state);
-	song->state(new_state);
-	app_->UpdatePlayIcon(song);
-	app_->seek_pane()->SetCurrentOrUpdateSong(song);
+	
+	if (song != nullptr) {
+		song->state(new_state);
+		app_->seek_pane()->SetCurrentOrUpdate(song);
+	}
+	
+	app_->UpdatePlayIcon(GST_STATE_PAUSED);
+	app_->last_play_state(new_state);
 }
 
 void
@@ -146,8 +168,8 @@ void
 GstPlayer::SetSeekAndPause_Finish()
 {
 	Song *song = set_seek_and_pause_.song;
-	app_->seek_pane()->SetCurrentOrUpdateSong(song);
-	app_->UpdatePlayIcon(song);
+	app_->seek_pane()->SetCurrentOrUpdate(song);
+	app_->UpdatePlayIcon(GST_STATE_PLAYING);
 	
 	const i64 new_pos = song->playing_at();
 	//mtl_info("seek to: %ld", song->playing_at());
@@ -160,15 +182,20 @@ void
 GstPlayer::StopPlaying(Song *song)
 {
 	gst_element_set_state(play_elem_, GST_STATE_NULL);
-	song->playing_at(-1);
-	song->state(GST_STATE_NULL);
-	app_->seek_pane()->SetCurrentOrUpdateSong(nullptr);
+	
+	if (song != nullptr) {
+		song->playing_at(-1);
+		song->state(GST_STATE_NULL);
+	}
+	
+	app_->seek_pane()->SetCurrentOrUpdate(song);
 }
 
 void
 GstPlayer::SeekTo(const i64 new_pos)
 {
 	auto flag = GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT;
+	
 	if (gst_element_seek_simple(play_elem_, GST_FORMAT_TIME,
 		GstSeekFlags(flag), new_pos))
 	{

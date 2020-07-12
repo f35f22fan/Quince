@@ -36,92 +36,41 @@ public:
 	App(int argc, char *argv[]);
 	virtual ~App();
 	
-	gui::Playlist*
-	active_playlist() const { return active_playlist_; }
-	
-	QVector<Song*>*
-	active_playlist_songs();
-	
-	gui::TableModel*
-	active_table_model();
-	
-	bool
-	AddBatch(QVector<quince::Song*> &vec);
-	
-	void
-	AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist);
-	
-	gui::Playlist*
-	CreatePlaylist(const QString &name, int *index = nullptr);
-	
-	gui::Playlist*
-	GetComboCurrentPlaylist(int *pindex = nullptr);
-	
-	Song*
-	GetCurrentSong(int *index = nullptr);
-	
-	Song*
-	GetFirstSongInCurrentPlaylist();
-	
-	int
-	GetIndex(gui::Playlist *playlist) const;
-	
-	bool
-	InitDiscoverer();
-	
+	gui::Playlist* active_playlist() const { return active_playlist_; }
+	QVector<Song*>* active_playlist_songs();
+	gui::TableModel* active_table_model();
+	bool AddBatch(QVector<quince::Song*> &vec);
+	void AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist);
+	gui::Playlist* CreatePlaylist(const QString &name, const bool set_active, int *index = nullptr);
+	gui::Playlist* GetComboCurrentPlaylist(int *pindex = nullptr);
+	Song* GetCurrentSong(int *index = nullptr);
+	Song* GetFirstSongInCurrentPlaylist();
+	int GetIndex(gui::Playlist *playlist) const;
+	bool InitDiscoverer();
+	void last_play_state(GstState s) { last_play_state_ = s; }
+	void MediaPause();
+	void MediaPlay();
+	void MediaPlayPause();
 	void MessageAsyncDone();
-	
-	void
-	PlaylistComboIndexChanged(int index);
-	
-	void
-	PlaylistDoubleClicked(QModelIndex index);
-	
-	GstElement*
-	play_elem() const;
-	
-	GstPlayer*
-	player() const { return player_; }
-	
-	void
-	PlaySong(const audio::Pick direction);
-	
-	void
-	PlayStop();
-	
-	static bool
-	QueryAppConfigPath(QString &path);
-	
-	void
-	ReachedEndOfStream();
-	
-	void
-	RemoveAllSongsFromPlaylist();
-	
-	void
-	RemoveSelectedSongs();
-	
-	bool
-	SavePlaylistsToDisk();
-	
-	void
-	SetActive(gui::Playlist *playlist);
-	
-	gui::SeekPane*
-	seek_pane() const { return seek_pane_; }
-	
-	void
-	TrayActivated(QSystemTrayIcon::ActivationReason reason);
-	
-	void
-	UpdatePlayIcon(Song *song);
-	
-	gui::UpdateTableRange
-	UpdatePlayingSongPosition(const i64 pos_is_known);
+	void PlaylistComboIndexChanged(int index);
+	void PlaylistDoubleClicked(QModelIndex index);
+	GstElement* play_elem() const;
+	GstPlayer* player() const { return player_; }
+	void PlaySong(const audio::Pick direction);
+	void PlayStop();
+	static bool QueryAppConfigPath(QString &path);
+	void ReachedEndOfStream();
+	void RemoveAllSongsFromPlaylist();
+	void RemoveSelectedSongs();
+	bool SavePlaylistsToDisk();
+	void SetActive(gui::Playlist *playlist);
+	gui::SeekPane* seek_pane() const { return seek_pane_; }
+	void TrayActivated(QSystemTrayIcon::ActivationReason reason);
+	void UpdatePlayIcon(const GstState new_state);
+	gui::UpdateTableRange UpdatePlayingSongPosition(const i64 pos_is_known);
 	
 protected:
-	void
-	closeEvent(QCloseEvent *event);
+	void closeEvent(QCloseEvent *event);
 	
 private:
 	
@@ -129,8 +78,7 @@ private:
 	AddAction(QToolBar *tb, const QString &icon_name,
 		const QString &action_name, const char *tooltip = nullptr);
 	
-	void
-	AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist);
+	void AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist);
 	void AskAddSongFilesToPlaylist();
 	void AskDeletePlaylist();
 	void AskNewPlaylist();
@@ -149,6 +97,7 @@ private:
 	void ProcessAction(const QString &action_name);
 	void RegisterGlobalShortcut(const QString &action_name,
 		const QKeySequence &key_sequence, QIcon *icon = nullptr);
+	
 	void RegisterGlobalShortcuts();
 	bool SavePlaylist(gui::Playlist *playlist, const QString &dir_path, const bool is_active);
 	bool SavePlaylistSimple(gui::Playlist *playlist);
@@ -169,6 +118,7 @@ private:
 	i32 last_playlist_index_ = -1;
 	QIcon app_icon_;
 	QSystemTrayIcon *tray_icon_ = nullptr;
+	GstState last_play_state_ = GST_STATE_NULL;
 	
 	struct QuinceContext {
 		QString unique;

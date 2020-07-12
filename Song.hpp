@@ -2,6 +2,7 @@
 
 #include "io/io.hh"
 #include "audio.hxx"
+#include "audio/decl.hxx"
 #include "audio/Meta.hpp"
 #include "decl.hxx"
 #include "types.hxx"
@@ -35,8 +36,8 @@ public:
 	audio::Meta&
 	meta() { return meta_; }
 	
-	const QString& uri() const { return uri_; }
-	void uri(const QString &s) { uri_ = s; }
+	void
+	FillIn(audio::TempSongInfo &temp_song_info);
 	
 	static Song*
 	From(quince::ByteArray &ba);
@@ -72,6 +73,9 @@ public:
 	
 	i64 playing_at() const { return playing_at_; }
 	void playing_at(const i64 t) { playing_at_ = t; }
+	
+	const QString& uri() const { return uri_; }
+	void uri(const QString &s) { uri_ = s; }
 	
 private:
 	GstState state_ = GST_STATE_NULL;

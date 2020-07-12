@@ -3,6 +3,7 @@
 #include <QLabel>
 #include <QSlider>
 
+#include "../audio/TempSongInfo.hpp"
 #include "decl.hxx"
 #include "../decl.hxx"
 #include "../err.hpp"
@@ -16,8 +17,8 @@ public:
 	virtual ~SeekPane();
 	
 	void ActivePlaylistChanged(gui::Playlist *playlist);
-	Song *current_song() const { return current_song_; }
-	void SetCurrentOrUpdateSong(Song *song);
+	bool IsActive(Song *song);
+	void SetCurrentOrUpdate(Song *song);
 	bool slider_dragged_by_user() const { return slider_dragged_by_user_; }
 	void SliderValueChanged(int value);
 	void UpdatePlaylistDuration(Playlist *playlist);
@@ -31,7 +32,7 @@ private:
 	void SliderPressed();
 	void SliderReleased();
 	
-	Song *current_song_ = nullptr;
+	audio::TempSongInfo temp_song_info_ = {};
 	App *app_ = nullptr;
 	bool slider_dragged_by_user_ = false;
 	timespec last_seeked_ = {0, 0};
