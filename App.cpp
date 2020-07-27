@@ -413,7 +413,7 @@ App::AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist)
 			QString full_path = file.build_full_path();
 			AddFolderToPlaylist(full_path, playlist);
 		} else {
-			auto *song = Song::FromFile(file);
+			auto *song = Song::FromFile(file, playlist->id());
 //			auto song_path = file.build_full_path().toLocal8Bit();
 			
 			if (song != nullptr) {
@@ -429,6 +429,8 @@ App::AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist)
 	
 	AddBatch(songs_to_add);
 	model->InsertRows(songs.size(), songs_to_add);
+	
+	SavePlaylistSimple(playlist);
 }
 
 void
@@ -476,7 +478,9 @@ App::AskAddSongFilesToPlaylist()
 	if (playlist == nullptr)
 	{
 		if (playlists_.isEmpty()) {
-			playlist = CreatePlaylist("New Playlist", true);
+			playlist = CreatePlaylist("New Playlist", true,
+				PlaylistActivationOption::None, nullptr,
+				gui::playlist::Ctor::AssignNewId);
 		} else {
 			mtl_warn("Can't get current playlist");
 			return;
@@ -532,7 +536,8 @@ App::AskNewPlaylist()
 		QLineEdit::Normal, "New Playlist", &ok);
 	
 	if (ok && !text.isEmpty())
-		CreatePlaylist(text, true);
+		CreatePlaylist(text, true, PlaylistActivationOption::None,
+			nullptr, gui::playlist::Ctor::AssignNewId);
 }
 
 void
@@ -628,7 +633,7 @@ App::CreateMediaActionsToolBar()
 	auto *w = AddAction(tb, "list-add", actions::AddSongFilesToPlaylist);
 	w->setToolTip("Add song files and folders to playlist");
 	
-	w = AddAction(tb, "list-remove", actions::RemoveSongFromPlaylist);
+	w = AddAction(tb, "list-remove", actions::RemoveSongsFromPlaylist);
 	w->setToolTip("Remove song from playlist");
 	
 	AddAction(tb, "edit-clear", actions::PlaylistRemoveAllEntries, "Remove all songs");
@@ -643,16 +648,26 @@ App::CreateMediaActionsToolBar()
 }
 
 gui::Playlist*
-App::CreatePlaylist(const QString &name, const bool set_active, int *index)
+App::CreatePlaylist(const QString &name, const bool set_active,
+	const PlaylistActivationOption activation_option, int *index,
+	gui::playlist::Ctor ctor)
 {
 	for (gui::Playlist *p: playlists_)
 	{
-		if (p->name() == name)
+		if (p->name() == name) {
+			auto ba = p->name().toLocal8Bit();
+			mtl_trace("Same playlist name: \"%s\"", ba.data());
 			return nullptr;
+		}
 	}
 	
 	gui::Playlist *playlist = new gui::Playlist(this, name);
-	playlist->id(GenNewPlaylistId());
+	
+	if (ctor == gui::playlist::Ctor::AssignNewId) {
+		playlist->id(GenNewPlaylistId());
+		mtl_info("Assigned new playlist id: %ld", playlist->id());
+	}
+	
 	int n = playlist_stack_->addWidget(playlist);
 	playlists_cb_->addItem(name);
 	playlists_.append(playlist);
@@ -660,10 +675,11 @@ App::CreatePlaylist(const QString &name, const bool set_active, int *index)
 	if (index != nullptr)
 		*index = n;
 	
-	SavePlaylistSimple(playlist);
+	if (playlist->id() != -1)
+		SavePlaylistSimple(playlist);
 	
 	if (set_active)
-		SetActive(playlist);
+		SetActive(playlist, activation_option);
 	
 	return playlist;
 }
@@ -742,28 +758,24 @@ App::DeletePlaylist(gui::Playlist *p, int index)
 	return true;
 }
 
-u64
+i64
 App::GenNewPlaylistId() const
 {
-	u64 greatest = 0;
+	i64 greatest = -1;
 	
 	for (gui::Playlist *p : playlists_) {
 		if (p->id() >= greatest)
-			greatest = p->id() + 1;
+			greatest = p->id();
 	}
 	
-	return greatest;
+	return greatest + 1;
 }
 
 Song*
 App::GetCurrentSong(int *index)
 {
 	auto *songs = active_playlist_songs();
-	
-	if (songs == nullptr) {
-		mtl_trace();
-		return nullptr;
-	}
+	CHECK_PTR_NULL(songs);
 	
 	for (int i = 0; i < songs->size(); i++)
 	{
@@ -795,6 +807,19 @@ App::GetFirstSongInCurrentPlaylist()
 	return (*songs)[0];
 }
 
+Song*
+App::GetFirstSongInVisiblePlaylist()
+{
+	auto *playlist = GetVisiblePlaylist();
+	CHECK_PTR_NULL(playlist);
+	auto &songs = playlist->songs();
+	
+	if (songs.isEmpty())
+		return nullptr;
+	
+	return songs[0];
+}
+
 int
 App::GetIndex(gui::Playlist *playlist) const
 {
@@ -808,6 +833,44 @@ App::GetIndex(gui::Playlist *playlist) const
 	}
 	
 	return -1;
+}
+
+gui::Playlist*
+App::GetVisiblePlaylist()
+{
+	int index = playlists_cb_->currentIndex();
+	
+	if (index == -1 || index >= playlists_.size())
+		return nullptr;
+	
+	return playlists_[index];
+}
+
+Song*
+App::GetVisiblePlaylistCurrentSong(int *pindex)
+{
+	gui::Playlist *playlist = GetVisiblePlaylist();
+	CHECK_PTR_NULL(playlist);
+//	auto ba = playlist->name().toLocal8Bit();
+//	mtl_info("Visilbe playlist: %s", ba.data());
+	
+	auto *model = playlist->table_model();
+	QVector<Song*> &songs = model->songs();
+	const int count = songs.size();
+	
+	for (int i = 0; i < count; i++) {
+		Song *song = songs[i];
+		
+		if (song->is_playing_or_paused())
+		{
+			if (pindex != nullptr)
+				*pindex = i;
+			
+			return song;
+		}
+	}
+	
+	return nullptr;
 }
 
 bool
@@ -849,22 +912,27 @@ App::LoadPlaylist(const QString &full_path)
 	
 	if (cache_version != quince::PlaylistCacheVersion)
 	{
-		mtl_info("Cache version %d not supported, need %d",
-			cache_version, quince::PlaylistCacheVersion);
+//		auto ba = full_path.toLocal8Bit();
+//		mtl_info("Playlist cache version %d not supported, need %d, file:\n%s",
+//			cache_version, quince::PlaylistCacheVersion, ba.data());
 		return;
 	}
 	
+	i64 id = ba.next_i64();
 	QString playlist_name = ba.next_string();
 	const bool is_active = ba.next_u8() == 1;
-	auto *playlist = CreatePlaylist(playlist_name, false);
+	auto *playlist = CreatePlaylist(playlist_name, false,
+		PlaylistActivationOption::None, nullptr,
+		gui::playlist::Ctor::None);
 	CHECK_PTR_VOID(playlist);
+	playlist->id(id);
 	auto &songs = playlist->songs();
 	const i32 song_count = ba.next_i32();
 	QVector<Song*> songs_to_add;
 	
 	for (i32 i = 0; i < song_count; i++)
 	{
-		Song *song = Song::From(ba);
+		Song *song = Song::From(ba, playlist->id());
 		
 		if (song != nullptr)
 			songs_to_add.append(song);
@@ -874,7 +942,7 @@ App::LoadPlaylist(const QString &full_path)
 	model->InsertRows(songs.size(), songs_to_add);
 	
 	if (is_active)
-		SetActive(playlist);
+		SetActive(playlist, PlaylistActivationOption::RestoreStreamPosition);
 }
 
 void
@@ -891,13 +959,13 @@ App::LoadPlaylists()
 	if (io::ListFileNames(dir_path, names) != io::Err::Ok)
 		return;
 	
-	
 	for (const QString &filename: names)
 		LoadPlaylist(dir_path + filename);
 	
 	{ // this fixes gui/playback glitches
-		if (playlists_.size() == 1)
-			SetActive(playlists_[0]);
+		// not sure if it's still the case
+		if (playlists_.size() == 1 && active_playlist_ != playlists_[0])
+			SetActive(playlists_[0], PlaylistActivationOption::RestoreStreamPosition);
 	}
 }
 
@@ -916,7 +984,7 @@ void
 App::MediaPlay()
 {
 	int song_index = -1;
-	Song *song = GetCurrentSong(&song_index);
+	Song *song = GetVisiblePlaylistCurrentSong(&song_index);
 	
 	if (song == nullptr)
 	{
@@ -925,7 +993,7 @@ App::MediaPlay()
 			return;
 		}
 		
-		song = GetFirstSongInCurrentPlaylist();
+		song = GetFirstSongInVisiblePlaylist();
 		CHECK_PTR_VOID(song);
 		song_index = 0;
 	}
@@ -980,6 +1048,75 @@ App::MessageAsyncDone()
 //	}
 }
 
+gui::Playlist*
+App::PickPlaylist(const i64 id, int *pindex)
+{
+	const int count = playlists_.size();
+	
+	for (int i = 0; i < count; i++)
+	{
+		gui::Playlist *p = playlists_[i];
+		
+		if (p->id() == id) {
+			if (pindex != nullptr)
+				*pindex = i;
+			
+			return p;
+		}
+	}
+	
+	return nullptr;
+}
+
+int
+App::PickSong(QVector<Song*> *vec, const int current_song_index,
+	const audio::Pick pick)
+{
+	if (pick == audio::Pick::Next)
+	{
+		if (current_song_index == -1) {
+			if (GetFirstSongInCurrentPlaylist() != nullptr)
+				return 0;
+			return -1;
+		} else if (current_song_index == vec->size() -1) {
+			if (play_mode_ == audio::PlayMode::RepeatPlaylist) {
+				if (GetFirstSongInCurrentPlaylist() != nullptr)
+					return 0;
+			}
+			
+			return -1;
+		} else {
+			auto *last_song = (*vec)[current_song_index];
+			last_song->position(-1);
+			last_song->state(GST_STATE_NULL);
+			active_table_model()->UpdateRangeDefault(current_song_index);
+			return current_song_index + 1;
+		}
+	} else if (pick == audio::Pick::Prev) {
+		
+		if (current_song_index == -1) {
+			auto *model = active_table_model();
+			
+			if (model == nullptr)
+				return -1;
+			
+			QVector<Song*> &vec = model->songs();
+			return vec.isEmpty() ? -1 : vec.size() - 1;
+		} else if (current_song_index == 0) {
+			return -1;
+		} else {
+			auto *last_song = (*vec)[current_song_index];
+			last_song->position(-1);
+			last_song->state(GST_STATE_NULL);
+			active_table_model()->UpdateRangeDefault(current_song_index);
+			return current_song_index - 1;
+		}
+	} else {
+		mtl_warn();
+		return -1;
+	}
+}
+
 GstElement*
 App::play_elem() const { return player_->play_elem(); }
 
@@ -987,7 +1124,7 @@ void
 App::PlaylistComboIndexChanged(int index)
 {
 	if (index != -1 && index < playlists_.size())
-		SetActive(playlists_[index]);
+		SetActive(playlists_[index], PlaylistActivationOption::None);
 }
 
 void
@@ -1013,55 +1150,6 @@ App::PlaySong(const audio::Pick direction)
 	Song *playing_song = (*vec)[song_index];
 	player_->Play(playing_song);
 	active_table_model()->UpdateRangeDefault(song_index);
-}
-
-int
-App::PickSong(QVector<Song*> *vec, const int current_song_index,
-	const audio::Pick pick)
-{
-	if (pick == audio::Pick::Next)
-	{
-		if (current_song_index == -1) {
-			if (GetFirstSongInCurrentPlaylist() != nullptr)
-				return 0;
-			return -1;
-		} else if (current_song_index == vec->size() -1) {
-			if (play_mode_ == audio::PlayMode::RepeatPlaylist) {
-				if (GetFirstSongInCurrentPlaylist() != nullptr)
-					return 0;
-			}
-			
-			return -1;
-		} else {
-			auto *last_song = (*vec)[current_song_index];
-			last_song->playing_at(-1);
-			last_song->state(GST_STATE_NULL);
-			active_table_model()->UpdateRangeDefault(current_song_index);
-			return current_song_index + 1;
-		}
-	} else if (pick == audio::Pick::Prev) {
-		
-		if (current_song_index == -1) {
-			auto *model = active_table_model();
-			
-			if (model == nullptr)
-				return -1;
-			
-			QVector<Song*> &vec = model->songs();
-			return vec.isEmpty() ? -1 : vec.size() - 1;
-		} else if (current_song_index == 0) {
-			return -1;
-		} else {
-			auto *last_song = (*vec)[current_song_index];
-			last_song->playing_at(-1);
-			last_song->state(GST_STATE_NULL);
-			active_table_model()->UpdateRangeDefault(current_song_index);
-			return current_song_index - 1;
-		}
-	} else {
-		mtl_warn();
-		return -1;
-	}
 }
 
 void
@@ -1094,7 +1182,7 @@ App::ProcessAction(const QString &action_name)
 		PlayStop();
 	} else if (action_name == actions::AddSongFilesToPlaylist) {
 		AskAddSongFilesToPlaylist();
-	} else if (action_name == actions::RemoveSongFromPlaylist) {
+	} else if (action_name == actions::RemoveSongsFromPlaylist) {
 		RemoveSelectedSongs();
 	} else if (action_name == actions::PlaylistNew) {
 		AskNewPlaylist();
@@ -1153,7 +1241,7 @@ App::ReachedEndOfStream()
 		auto *song = (*vec)[i];
 		
 		if (song->is_playing()) {
-			song->playing_at(-1);
+			song->position(-1);
 			last_playing = i;
 			break;
 		}
@@ -1275,8 +1363,10 @@ App::RemoveAllSongsFromPlaylist()
 	CHECK_PTR_VOID(playlist);
 	const i32 count = playlist->RemoveAllSongs();
 	
-	if (count > 0)
+	if (count > 0) {
 		seek_pane_->UpdatePlaylistDuration(playlist);
+		SavePlaylistSimple(playlist);
+	}
 }
 
 void
@@ -1289,6 +1379,7 @@ App::RemoveSelectedSongs()
 	if (count > 0)
 	{
 		seek_pane_->UpdatePlaylistDuration(playlist);
+		SavePlaylistSimple(playlist);
 	}
 }
 
@@ -1299,6 +1390,7 @@ const bool is_active)
 	CHECK_PTR(playlist);
 	quince::ByteArray ba;
 	ba.add_i32(PlaylistCacheVersion);
+	ba.add_i64(playlist->id());
 	ba.add_string(playlist->name());
 	ba.add_u8(is_active ? 1 : 0);
 	auto &songs = playlist->songs();
@@ -1370,14 +1462,17 @@ App::SavePlaylistsToDisk()
 }
 
 void
-App::SetActive(gui::Playlist *playlist)
+App::SetActive(gui::Playlist *playlist, const PlaylistActivationOption option)
 {
-	// playlists_cb_->setCurrentIndex(index)
-	// triggers this method again, workaround:
 	static bool executing = false;
-	if (executing) return;
-	executing = true;
+	// The method playlists_cb_->setCurrentIndex(index)
+	// triggers this method again, workaround:
+	if (executing)
+		return;
 	
+	executing = true;
+//	auto ba = playlist->name().toLocal8Bit();
+//	mtl_info("set active(%s): %d", ba.data(), int(option));
 	active_playlist_ = playlist;
 	
 	if (last_playlist_index_ != -1)
@@ -1387,10 +1482,13 @@ App::SetActive(gui::Playlist *playlist)
 	const int index = GetIndex(playlist);
 	playlist_stack_->setCurrentIndex(index);
 	playlists_cb_->setCurrentIndex(index);
-	Song *song = playlist->GetCurrentSong(nullptr);
 	
-	if (song != nullptr)
-		player_->SetSeekAndPause_Start(song);
+	if (option == PlaylistActivationOption::RestoreStreamPosition) {
+		Song *song = playlist->GetCurrentSong(nullptr);
+		
+		if (song != nullptr)
+			player_->SetSeekAndPause_Start(song);
+	}
 	
 	last_playlist_index_ = index;
 	executing = false;
@@ -1451,9 +1549,9 @@ App::UpdatePlayingSongPosition(const i64 pos_is_known)
 	auto *song = GetCurrentSong();
 	
 	if (song != nullptr)
-		song->playing_at(position);
+		song->position(position);
 	
-	tsi.playing_at = position;
+	tsi.position = position;
 	seek_pane_->UpdatePosition(position);
 	
 	return gui::UpdateTableRange::OneColumn;

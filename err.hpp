@@ -127,6 +127,13 @@
 	}\
 }
 
+#define CHECK_PTR_NULL(x) {\
+	if (x == nullptr) {\
+		mtl_trace();\
+		return nullptr;\
+	}\
+}
+
 #define CHECK_PTR_VOID(x) {\
 	if (x == nullptr) {\
 		mtl_trace();\

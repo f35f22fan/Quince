@@ -23,18 +23,20 @@ Song::FillIn(audio::TempSongInfo &temp_song_info)
 	temp_song_info.duration = meta_.duration();
 	temp_song_info.song = this;
 	temp_song_info.uri = uri_;
-	temp_song_info.playing_at = playing_at_;
+	temp_song_info.position = position_;
+	temp_song_info.playlist_id = playlist_id_;
 	temp_song_info.state_ = state_;
 }
 
 Song*
-Song::From(quince::ByteArray &ba)
+Song::From(quince::ByteArray &ba, const i64 playlist_id)
 {
 	Song *song = new Song();
 	song->display_name(ba.next_string());
 	song->uri(ba.next_string());
 	song->dir_path(ba.next_string());
-	song->playing_at(ba.next_i64());
+	song->position(ba.next_i64());
+	song->playlist_id(playlist_id);
 	song->state(GstState(ba.next_i32()));
 	song->bits() = ba.next_u8();
 	
@@ -57,12 +59,12 @@ Song::From(quince::ByteArray &ba)
 }
 
 Song*
-Song::FromFile(const io::File &file)
+Song::FromFile(const io::File &file, const i64 playlist_id)
 {
 	QStringRef ext = file.Extension();
 	
 	if (ext.isNull()) {
-		mtl_info("file extension is null");
+//		mtl_info("file extension is null");
 		return nullptr;
 	}
 	
@@ -80,6 +82,7 @@ Song::FromFile(const io::File &file)
 	
 	auto *p = new Song();
 	p->display_name(file.name);
+	p->playlist_id(playlist_id);
 	
 	audio::Meta &meta = p->meta();
 	meta.audio_codec(audio_codec);
@@ -96,7 +99,7 @@ Song::SaveTo(quince::ByteArray &ba)
 	ba.add_string(display_name_);
 	ba.add_string(uri_);
 	ba.add_string(dir_path_);
-	ba.add_i64(playing_at_);
+	ba.add_i64(position_);
 	GstState state = is_playing() ? GST_STATE_PAUSED : state_;
 	ba.add_i32(i32(state));
 	ba.add_u8(bits_);

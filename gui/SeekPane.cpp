@@ -31,10 +31,6 @@ SeekPane::ActivePlaylistChanged(gui::Playlist *playlist)
 	CHECK_PTR_VOID(playlist);
 	UpdatePlaylistDuration(playlist);
 	SetCurrentOrUpdate(playlist->GetCurrentSong());
-//	i64 new_pos = (song == nullptr) ? 0 : song->playing_at();
-//	slider_->setValue(new_pos / NS_MS_RATIO);
-//	SetLabelValue(position_label_, new_pos);
-//	SetLabelValue(duration_label_, new_pos);
 }
 
 void
@@ -69,7 +65,6 @@ SeekPane::IsActive(Song *song)
 void
 SeekPane::SetCurrentOrUpdate(Song *song)
 {
-	
 	if (song != nullptr)
 	{
 		song->FillIn(temp_song_info_);
@@ -84,6 +79,9 @@ SeekPane::SetCurrentOrUpdate(Song *song)
 		SetLabelValue(duration_label_, -1);
 		SetLabelValue(position_label_, -1);
 	}
+	
+	const i64 new_pos = (song == nullptr) ? 0 : song->position();
+	slider_->setValue(new_pos / NS_MS_RATIO);
 }
 
 void

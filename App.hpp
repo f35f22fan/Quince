@@ -4,6 +4,7 @@
 #include "decl.hxx"
 #include "err.hpp"
 #include "gui/decl.hxx"
+#include "gui/playlist.hxx"
 #include "io/io.hh"
 #include "types.hxx"
 
@@ -20,7 +21,7 @@
 
 namespace quince {
 
-static const i32 PlaylistCacheVersion = 2;
+static const i32 PlaylistCacheVersion = 3;
 static const QString AppConfigName = QLatin1String("QuincePlayer");
 
 struct DiscovererUserParams {
@@ -41,17 +42,23 @@ public:
 	gui::TableModel* active_table_model();
 	bool AddBatch(QVector<quince::Song*> &vec);
 	void AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist);
-	gui::Playlist* CreatePlaylist(const QString &name, const bool set_active, int *index = nullptr);
+	gui::Playlist* CreatePlaylist(const QString &name, const bool set_active,
+		const PlaylistActivationOption activation_option,
+		int *index, gui::playlist::Ctor ctor);
 	gui::Playlist* GetComboCurrentPlaylist(int *pindex = nullptr);
 	Song* GetCurrentSong(int *index = nullptr);
 	Song* GetFirstSongInCurrentPlaylist();
+	Song* GetFirstSongInVisiblePlaylist();
 	int GetIndex(gui::Playlist *playlist) const;
+	gui::Playlist* GetVisiblePlaylist();
+	Song* GetVisiblePlaylistCurrentSong(int *pindex);
 	bool InitDiscoverer();
 	void last_play_state(GstState s) { last_play_state_ = s; }
 	void MediaPause();
 	void MediaPlay();
 	void MediaPlayPause();
 	void MessageAsyncDone();
+	gui::Playlist* PickPlaylist(const i64 id, int *pindex = nullptr);
 	void PlaylistComboIndexChanged(int index);
 	void PlaylistDoubleClicked(QModelIndex index);
 	GstElement* play_elem() const;
@@ -63,7 +70,7 @@ public:
 	void RemoveAllSongsFromPlaylist();
 	void RemoveSelectedSongs();
 	bool SavePlaylistsToDisk();
-	void SetActive(gui::Playlist *playlist);
+	void SetActive(gui::Playlist *playlist, const PlaylistActivationOption option);
 	gui::SeekPane* seek_pane() const { return seek_pane_; }
 	void TrayActivated(QSystemTrayIcon::ActivationReason reason);
 	void UpdatePlayIcon(const GstState new_state);
@@ -88,7 +95,7 @@ private:
 	QToolBar* CreatePlaylistActionsToolBar();
 	QTabBar* CreateTabBar();
 	bool DeletePlaylist(gui::Playlist *p, int index);
-	u64 GenNewPlaylistId() const;
+	i64 GenNewPlaylistId() const;
 	void LoadPlaylist(const QString &full_path);
 	void LoadPlaylists();
 	int PickSong(QVector<Song*> *vec, const int current_song_index,

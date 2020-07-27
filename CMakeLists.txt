@@ -66,14 +66,14 @@ set(src_files
     audio.cc audio.hh audio.hxx
     audio/decl.hxx
     audio/Meta.cpp audio/Meta.hpp
-    audio/TempSongInfo.cpp audio/TempSongInfo.hpp
+    audio/TempSongInfo.hpp
     App.cpp App.hpp
     ByteArray.cpp ByteArray.hpp
     decl.hxx
     Duration.cpp Duration.hpp
     GstPlayer.cpp GstPlayer.hpp
     gui/decl.hxx
-    gui/Playlist.cpp gui/Playlist.hpp
+    gui/Playlist.cpp gui/Playlist.hpp gui/playlist.hxx
     gui/PlaylistStackWidget.cpp gui/PlaylistStackWidget.hpp
     gui/SeekPane.cpp gui/SeekPane.hpp
     gui/Table.cpp gui/Table.hpp

@@ -139,13 +139,13 @@ Playlist::PlaylistDoubleClicked(QModelIndex index)
 	Song *playing = GetCurrentSong(&last_playing);
 	
 	if (playing != nullptr) {
-		playing->playing_at(-1);
+		playing->position(-1);
 		playing->state(GST_STATE_NULL);
 	}
 
 	Song *song = songs[row];
 	app_->player()->Play(song);
-	song->playing_at(0);
+	song->position(0);
 	table_model_->UpdateRange(row, gui::Column::Name,
 		last_playing, gui::Column::Duration);
 }

@@ -40,10 +40,10 @@ public:
 	FillIn(audio::TempSongInfo &temp_song_info);
 	
 	static Song*
-	From(quince::ByteArray &ba);
+	From(quince::ByteArray &ba, const i64 playlist_id);
 	
 	static Song*
-	FromFile(const io::File &file);
+	FromFile(const io::File &file, const i64 playlist_id);
 	
 	bool
 	is_paused() const { return state_ == GST_STATE_PAUSED; }
@@ -65,21 +65,25 @@ public:
 	bool
 	marked_for_deletion() const { return bits_ & u8(SongBits::MarkForDeletion); }
 	
+	i64 playlist_id() const { return playlist_id_; }
+	void playlist_id(i64 n) { playlist_id_ = n; }
+	
+	i64 position() const { return position_; }
+	void position(const i64 t) { position_ = t; }
+	
 	void
 	SaveTo(quince::ByteArray &ba);
 	
 	GstState state() const { return state_; }
 	void state(GstState s) { state_ = s; }
 	
-	i64 playing_at() const { return playing_at_; }
-	void playing_at(const i64 t) { playing_at_ = t; }
-	
 	const QString& uri() const { return uri_; }
 	void uri(const QString &s) { uri_ = s; }
 	
 private:
 	GstState state_ = GST_STATE_NULL;
-	i64 playing_at_ = -1;
+	i64 position_ = -1;
+	i64 playlist_id_ = -1;
 	QString display_name_;
 	QString uri_;
 	QString dir_path_;

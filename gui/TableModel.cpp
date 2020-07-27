@@ -86,7 +86,7 @@ TableModel::data(const QModelIndex &index, int role) const
 			if (song->is_playing_or_paused()) {
 				s.append(' ');
 				playing_row_ = row;
-				auto d = Duration::FromNs(song->playing_at());
+				auto d = Duration::FromNs(song->position());
 				const QString dstr = d.toDurationString();
 				
 				if (song->is_paused())

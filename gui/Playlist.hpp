@@ -15,6 +15,9 @@ public:
 	Playlist(App *app, const QString &name);
 	virtual ~Playlist();
 	
+	PlaylistActivationOption&
+	activation_option() { return activation_option_; }
+	
 	void
 	CreateGui();
 	
@@ -68,6 +71,8 @@ private:
 	QString name_;
 	TableModel *table_model_ = nullptr;
 	Table *table_ = nullptr;
-	u64 id_ = 0;
+	i64 id_ = -1;
+	PlaylistActivationOption activation_option_ = PlaylistActivationOption::None;
+	
 };
 }

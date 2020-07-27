@@ -35,19 +35,13 @@ PlaylistStackWidget::dropEvent(QDropEvent *event)
 		gui::Playlist *playlist = app_->GetComboCurrentPlaylist();
 		
 		if (playlist == nullptr) {
-			auto *new_one = app_->CreatePlaylist(QLatin1String("New Playlist"), true);
+			auto *new_one = app_->CreatePlaylist(QLatin1String("New Playlist"), true,
+				PlaylistActivationOption::None, nullptr,
+				playlist::Ctor::AssignNewId);
 			
-			if (new_one == nullptr) {
-				mtl_trace();
-				return;
-			}
-			
+			CHECK_PTR_VOID(new_one);
 			playlist = app_->active_playlist();
-			
-			if (playlist == nullptr) {
-				mtl_warn("No active playlist even after creating a new one");
-				return;
-			}
+			CHECK_PTR_VOID(playlist);
 		}
 		
 		QVector<io::File> files;
