@@ -27,6 +27,9 @@ public:
 	bool
 	GetFullPath(QString &full_path) const;
 	
+	bool
+	HasSong(Song *song) const;
+	
 	void
 	id(const i64 n) { id_ = n; }
 	
@@ -52,7 +55,7 @@ public:
 	RemoveSelectedSongs(); // returns num rows removed
 	
 	QVector<Song*>&
-	songs();
+	songs() const;
 	
 	Table*
 	table() const { return table_; }

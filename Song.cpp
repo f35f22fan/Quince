@@ -9,23 +9,23 @@
 namespace quince {
 
 void
-Song::Apply(const audio::Info &audio_info)
+Song::Apply(const audio::Info &info)
 {
-	meta_.bitrate(audio_info.bitrate);
-	meta_.channels(audio_info.channels);
-	meta_.sample_rate(audio_info.sample_rate);
-	meta_.duration(audio_info.duration);
+	meta_.bitrate(info.bitrate);
+	meta_.channels(info.channels);
+	meta_.sample_rate(info.sample_rate);
+	meta_.duration(info.duration);
 }
 
 void
-Song::FillIn(audio::TempSongInfo &temp_song_info)
+Song::FillIn(audio::TempSongInfo &info)
 {
-	temp_song_info.duration = meta_.duration();
-	temp_song_info.song = this;
-	temp_song_info.uri = uri_;
-	temp_song_info.position = position_;
-	temp_song_info.playlist_id = playlist_id_;
-	temp_song_info.state_ = state_;
+	info.duration = meta_.duration();
+	info.song = this;
+	info.uri = uri_;
+	info.position = position_;
+	info.playlist_id = playlist_id_;
+	info.state_ = state_;
 }
 
 Song*

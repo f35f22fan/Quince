@@ -21,7 +21,6 @@ public:
 	void SetCurrentOrUpdate(Song *song);
 	bool slider_dragged_by_user() const { return slider_dragged_by_user_; }
 	void SliderValueChanged(int value);
-	void UpdatePlaylistDuration(Playlist *playlist);
 	void UpdatePosition(const i64 new_pos);
 	
 private:
@@ -37,8 +36,7 @@ private:
 	bool slider_dragged_by_user_ = false;
 	timespec last_seeked_ = {0, 0};
 	QSlider *slider_ = nullptr;
-	QLabel *position_label_ = nullptr, *duration_label_ = nullptr,
-		*playlist_duration_ = nullptr;
+	QLabel *position_label_ = nullptr, *duration_label_ = nullptr;
 };
 
 }

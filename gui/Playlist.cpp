@@ -53,10 +53,8 @@ Playlist::dragEnterEvent(QDragEnterEvent *event)
 {
 	const QMimeData *mimedata = event->mimeData();
 	
-	if (mimedata->hasUrls()) {
-		mtl_trace();
+	if (mimedata->hasUrls())
 		event->acceptProposedAction();
-	}
 }
 
 void
@@ -121,6 +119,18 @@ Playlist::GetFullPath(QString &full_path) const
 	full_path = dir + QChar('/') + QString::number(id_);
 	
 	return true;
+}
+
+bool
+Playlist::HasSong(Song *song) const
+{
+	for (Song *p: songs())
+	{
+		if (p == song)
+			return true;
+	}
+	
+	return false;
 }
 
 void
@@ -226,6 +236,6 @@ Playlist::RemoveSelectedSongs()
 }
 
 QVector<Song*>&
-Playlist::songs() { return table_model_->songs(); }
+Playlist::songs() const { return table_model_->songs(); }
 
 }

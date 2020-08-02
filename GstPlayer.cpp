@@ -145,10 +145,9 @@ GstPlayer::Play(Song *song)
 			g_object_set(G_OBJECT(play_elem_), "uri", ba.data(), NULL);
 		}
 		
-		if (is_a_new_song) {
-			//mtl_trace("Is a new song!");
+		if (is_a_new_song)
 			SetSeekAndPause_Start(song);
-		}
+		
 		song->state(new_state);
 	}
 	

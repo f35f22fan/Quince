@@ -25,7 +25,7 @@ enum class Pick : i8 {
 };
 
 enum class PlayMode : i8 {
-	NotSet = -1,
+	None = -1,
 	RepeatTrack,
 	RepeatPlaylist,
 	StopAtTrackEnd,

@@ -1,7 +1,6 @@
 #include "App.hpp"
 
 #include "actions.hxx"
-#include "audio.hh"
 #include "ByteArray.hpp"
 #include "Duration.hpp"
 #include "GstPlayer.hpp"
@@ -703,6 +702,9 @@ App::CreatePlaylistActionsToolBar()
 		this, &App::PlaylistComboIndexChanged);
 	tb->addWidget(playlists_cb_); // takes ownership
 	
+	playlist_duration_ = new QLabel();
+	tb->addWidget(playlist_duration_);
+	
 	return tb;
 }
 
@@ -833,6 +835,29 @@ App::GetIndex(gui::Playlist *playlist) const
 	}
 	
 	return -1;
+}
+
+gui::Playlist*
+App::GetPlaylistById(const i64 playlist_id) const
+{
+	for (gui::Playlist *p: playlists_)
+	{
+		if (p->id() == playlist_id)
+			return p;
+	}
+	
+	return nullptr;
+}
+
+bool
+App::SongAndPlaylistMatch(const audio::TempSongInfo &tsi) const
+{
+	gui::Playlist *playlist = GetPlaylistById(tsi.playlist_id);
+	
+	if (playlist == nullptr)
+		return false;
+	
+	return playlist->HasSong(tsi.song);
 }
 
 gui::Playlist*
@@ -1183,7 +1208,7 @@ App::ProcessAction(const QString &action_name)
 	} else if (action_name == actions::AddSongFilesToPlaylist) {
 		AskAddSongFilesToPlaylist();
 	} else if (action_name == actions::RemoveSongsFromPlaylist) {
-		RemoveSelectedSongs();
+		RemoveSongsFromPlaylist(Which::Selected);
 	} else if (action_name == actions::PlaylistNew) {
 		AskNewPlaylist();
 	} else if (action_name == actions::QuitApp) {
@@ -1193,7 +1218,7 @@ App::ProcessAction(const QString &action_name)
 	} else if (action_name == actions::PlaylistDelete) {
 		AskDeletePlaylist();
 	} else if (action_name == actions::PlaylistRemoveAllEntries) {
-		RemoveAllSongsFromPlaylist();
+		RemoveSongsFromPlaylist(Which::All);
 	} else {
 		auto ba = action_name.toLocal8Bit();
 		mtl_trace("Action skipped: \"%s\"", ba.data());
@@ -1357,28 +1382,23 @@ App::RegisterGlobalShortcuts()
 }
 
 void
-App::RemoveAllSongsFromPlaylist()
+App::RemoveSongsFromPlaylist(const Which which)
 {
 	gui::Playlist *playlist = GetComboCurrentPlaylist(nullptr);
 	CHECK_PTR_VOID(playlist);
-	const i32 count = playlist->RemoveAllSongs();
+	i32 count = -1;
+	
+	switch (which) {
+	case Which::All: { count = playlist->RemoveAllSongs(); break; }
+	case Which::Selected: { count = playlist->RemoveSelectedSongs(); break; }
+	default: {
+		mtl_trace();
+		return;
+	}
+	}
 	
 	if (count > 0) {
-		seek_pane_->UpdatePlaylistDuration(playlist);
-		SavePlaylistSimple(playlist);
-	}
-}
-
-void
-App::RemoveSelectedSongs()
-{
-	gui::Playlist *playlist = GetComboCurrentPlaylist(nullptr);
-	CHECK_PTR_VOID(playlist);
-	const i32 count = playlist->RemoveSelectedSongs();
-	
-	if (count > 0)
-	{
-		seek_pane_->UpdatePlaylistDuration(playlist);
+		UpdatePlaylistDuration(playlist);
 		SavePlaylistSimple(playlist);
 	}
 }
@@ -1526,35 +1546,53 @@ App::UpdatePlayIcon(const GstState new_state)
 	play_pause_action_->setIcon(QIcon::fromTheme(icon_name));
 }
 
-gui::UpdateTableRange
+void
 App::UpdatePlayingSongPosition(const i64 pos_is_known)
 {
 	audio::TempSongInfo &tsi = player_->temp_song_info();
 	
-	if (!tsi.has_data()) {
-		return gui::UpdateTableRange::OneColumn;
-	}
+	if (!tsi.has_data())
+		return;
 	
-	i64 position = -1;
-	
-	if (pos_is_known >= 0) {
-		position = pos_is_known;
+	if (pos_is_known != -1) {
+		tsi.position = pos_is_known;
 	} else if (!gst_element_query_position (play_elem(), GST_FORMAT_TIME,
-		&position))
+		&tsi.position))
 	{
-		//mtl_trace();
-		return gui::UpdateTableRange::OneColumn;
+		return;
 	}
 	
-	auto *song = GetCurrentSong();
+	if (SongAndPlaylistMatch(tsi)) {
+		tsi.song->position(tsi.position);
+		seek_pane_->UpdatePosition(tsi.position);
+	}
+}
+
+void
+App::UpdatePlaylistDuration(gui::Playlist *playlist)
+{
+	CHECK_PTR_VOID(playlist);
+	QVector<Song*> &songs = playlist->table_model()->songs();
+	i64 total = 0;
+	i32 song_count = 0;
 	
-	if (song != nullptr)
-		song->position(position);
+	for (Song *song: songs)
+	{
+		audio::Meta &meta = song->meta();
+		
+		if (meta.is_duration_set())
+		{
+			total += meta.duration();
+			song_count++;
+		}
+	}
 	
-	tsi.position = position;
-	seek_pane_->UpdatePosition(position);
-	
-	return gui::UpdateTableRange::OneColumn;
+	Duration d = Duration::FromNs(total);
+	QString s = QString(('[')).append(QString::number(song_count))
+	.append(" tracks, ")
+	.append(d.toDurationString())
+	.append(']');
+	playlist_duration_->setText(s);
 }
 
 } // quince::

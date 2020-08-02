@@ -29,7 +29,7 @@ void
 SeekPane::ActivePlaylistChanged(gui::Playlist *playlist)
 {
 	CHECK_PTR_VOID(playlist);
-	UpdatePlaylistDuration(playlist);
+	app_->UpdatePlaylistDuration(playlist);
 	SetCurrentOrUpdate(playlist->GetCurrentSong());
 }
 
@@ -51,9 +51,6 @@ SeekPane::CreateGui()
 	
 	duration_label_ = new QLabel(this);
 	layout->addWidget(duration_label_);
-	
-	playlist_duration_ = new QLabel(this);
-	layout->addWidget(playlist_duration_);
 }
 
 bool
@@ -65,23 +62,23 @@ SeekPane::IsActive(Song *song)
 void
 SeekPane::SetCurrentOrUpdate(Song *song)
 {
+	i64 duration = -1;
+	i64 position = -1;
 	if (song != nullptr)
 	{
 		song->FillIn(temp_song_info_);
-		const i64 max = song->meta().duration();
-		slider_->setMaximum(max / NS_MS_RATIO);
-		SetLabelValue(duration_label_, max);
+		duration = song->meta().duration();
+		position = song->position();
+		slider_->setMaximum(duration / NS_MS_RATIO);
+		SetLabelValue(duration_label_, duration);
 	} else {
-		// leave temp_song_info_ as is to have info about the removed song
-		// from the playlist that is still playing. Well actually no.
 		temp_song_info_ = {};
 		slider_->setMaximum(0);
-		SetLabelValue(duration_label_, -1);
-		SetLabelValue(position_label_, -1);
 	}
 	
-	const i64 new_pos = (song == nullptr) ? 0 : song->position();
-	slider_->setValue(new_pos / NS_MS_RATIO);
+	SetLabelValue(duration_label_, duration);
+	SetLabelValue(position_label_, position);
+	slider_->setValue(position / NS_MS_RATIO);
 }
 
 void
@@ -142,41 +139,12 @@ SeekPane::SliderValueChanged(int value)
 }
 
 void
-SeekPane::UpdatePlaylistDuration(Playlist *playlist)
-{
-	CHECK_PTR_VOID(playlist);
-	QVector<Song*> &songs = playlist->table_model()->songs();
-	i64 total = 0;
-	i32 song_count = 0;
-	
-	for (Song *song: songs)
-	{
-		audio::Meta &meta = song->meta();
-		
-		if (meta.is_duration_set())
-		{
-			total += meta.duration();
-			song_count++;
-		}
-	}
-	
-	Duration d = Duration::FromNs(total);
-	QString s = QString(('[')).append(QString::number(song_count))
-	.append(" tracks, ")
-	.append(d.toDurationString())
-	.append(']');
-	playlist_duration_->setText(s);
-}
-
-void
 SeekPane::UpdatePosition(const i64 new_pos)
 {
 	SetLabelValue(position_label_, new_pos);
 	
 	if (!slider_dragged_by_user_)
-	{
 		slider_->setValue(new_pos / NS_MS_RATIO);
-	}
 }
 
 }

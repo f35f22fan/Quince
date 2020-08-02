@@ -22,7 +22,7 @@ class Song {
 public:
 	
 	void
-	Apply(const audio::Info &audio_info);
+	Apply(const audio::Info &info);
 	
 	u8&
 	bits() { return bits_; }
@@ -37,7 +37,7 @@ public:
 	meta() { return meta_; }
 	
 	void
-	FillIn(audio::TempSongInfo &temp_song_info);
+	FillIn(audio::TempSongInfo &info);
 	
 	static Song*
 	From(quince::ByteArray &ba, const i64 playlist_id);
