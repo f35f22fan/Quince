@@ -1013,7 +1013,9 @@ App::MediaPlay()
 	
 	if (song == nullptr)
 	{
+		mtl_trace();
 		if (last_play_state_ == GST_STATE_PAUSED) {
+			mtl_trace();
 			player_->Play(nullptr);
 			return;
 		}
@@ -1507,7 +1509,7 @@ App::SetActive(gui::Playlist *playlist, const PlaylistActivationOption option)
 		Song *song = playlist->GetCurrentSong(nullptr);
 		
 		if (song != nullptr)
-			player_->SetSeekAndPause_Start(song);
+			player_->SetSeekAndPause_Start(song, nullptr);
 	}
 	
 	last_playlist_index_ = index;

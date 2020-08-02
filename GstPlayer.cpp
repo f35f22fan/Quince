@@ -93,6 +93,19 @@ GstPlayer::~GstPlayer()
 }
 
 void
+GstPlayer::FinishUpPlayFunction(Song *song)
+{
+	if (song != nullptr)
+		song->state(GST_STATE_PLAYING);
+	
+	app_->seek_pane()->SetCurrentOrUpdate(song);
+	gst_element_set_state(play_elem_, GST_STATE_PLAYING);
+	mtl_trace();
+	app_->UpdatePlayIcon(GST_STATE_PAUSED);
+	app_->last_play_state(GST_STATE_PLAYING);
+}
+
+void
 GstPlayer::InitGst(int argc, char *argv[])
 {
 	gst_init(&argc, &argv);
@@ -127,8 +140,6 @@ GST_STATE_PLAYING – the element is PLAYING, the GstClock is running and the da
 void
 GstPlayer::Play(Song *song)
 {
-	const GstState new_state = GST_STATE_PLAYING;
-	
 	if (song != nullptr)
 	{
 		bool is_a_new_song = false;
@@ -145,16 +156,13 @@ GstPlayer::Play(Song *song)
 			g_object_set(G_OBJECT(play_elem_), "uri", ba.data(), NULL);
 		}
 		
-		if (is_a_new_song)
-			SetSeekAndPause_Start(song);
-		
-		song->state(new_state);
+		if (is_a_new_song) {
+			SetSeekAndPause_Start(song, &GstPlayer::FinishUpPlayFunction);
+			return;
+		}
 	}
 	
-	app_->seek_pane()->SetCurrentOrUpdate(song);
-	gst_element_set_state(play_elem_, new_state);
-	app_->UpdatePlayIcon(GST_STATE_PAUSED);
-	app_->last_play_state(new_state);
+	FinishUpPlayFunction(song);
 }
 
 void
@@ -171,9 +179,9 @@ GstPlayer::SeekTo(const i64 new_pos)
 }
 
 void
-GstPlayer::SetSeekAndPause_Start(Song *song)
+GstPlayer::SetSeekAndPause_Start(Song *song, PlayMethod play_method)
 {
-	if (song->position() < 0)
+	if (song->position() == -1)
 		return;
 	
 	gst_element_set_state(play_elem_, GST_STATE_NULL);
@@ -182,8 +190,10 @@ GstPlayer::SetSeekAndPause_Start(Song *song)
 	
 	set_seek_and_pause_.pending = true;
 	set_seek_and_pause_.song = song;
+	set_seek_and_pause_.play_method = play_method;
 	gst_element_set_state(play_elem_, GST_STATE_PAUSED);
-	// now waiting for async_done on the bus to trigger SetSeekAndPause_Finish()
+	// now waiting for async_done on the bus to
+	// trigger SetSeekAndPause_Finish()
 }
 
 void
@@ -191,6 +201,7 @@ GstPlayer::SetSeekAndPause_Finish()
 {
 	Song *song = set_seek_and_pause_.song;
 	app_->seek_pane()->SetCurrentOrUpdate(song);
+	mtl_trace();
 	app_->UpdatePlayIcon(GST_STATE_PLAYING);
 	
 	const i64 new_pos = song->position();
@@ -198,6 +209,10 @@ GstPlayer::SetSeekAndPause_Finish()
 	set_seek_and_pause_.pending2 = true;
 	set_seek_and_pause_.new_pos = new_pos;
 	SeekTo(new_pos);
+	auto p = set_seek_and_pause_.play_method;
+	
+	if (p)
+		(this->*p)(song);
 }
 
 void

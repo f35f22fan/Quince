@@ -12,16 +12,20 @@
 
 namespace quince {
 
+typedef void(GstPlayer::*PlayMethod)(Song *song);
+
 class GstPlayer {
 public:
 	GstPlayer(quince::App *app, int argc, char *argv[]);
 	virtual ~GstPlayer();
 	
+	
+	void FinishUpPlayFunction(Song *song);
 	GstElement* play_elem() const { return play_elem_; }
 	void Pause(Song *song);
 	void Play(Song *song);
 	void SeekTo(const i64 new_pos);
-	void SetSeekAndPause_Start(Song *song);
+	void SetSeekAndPause_Start(Song *song, PlayMethod play_method);
 	void SetSeekAndPause_Finish();
 	void StopPlaying(Song *song);
 	audio::TempSongInfo& temp_song_info() { return temp_song_info_; }
@@ -31,6 +35,7 @@ public:
 		bool pending2 = false;
 		Song *song = nullptr;
 		i64 new_pos = -1;
+		PlayMethod play_method = nullptr;
 	} set_seek_and_pause_ = {};
 	
 	
