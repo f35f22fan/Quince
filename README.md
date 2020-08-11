@@ -1,5 +1,5 @@
 # Quince ![](resources/Quince48.png)
-A good old desktop Linux audio player written in C++/Qt5.
+A good old audio player for the Linux desktop written in C++/Qt5.
 
 Features:
  - [x] Quick startup & only play local song files

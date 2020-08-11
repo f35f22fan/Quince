@@ -838,12 +838,20 @@ App::GetIndex(gui::Playlist *playlist) const
 }
 
 gui::Playlist*
-App::GetPlaylistById(const i64 playlist_id) const
+App::GetPlaylistById(const i64 playlist_id, int *pindex) const
 {
-	for (gui::Playlist *p: playlists_)
+	const int count = playlists_.size();
+	
+	for (int i = 0; i < count; i++)
 	{
-		if (p->id() == playlist_id)
+		auto *p = playlists_[i];
+		
+		if (p->id() == playlist_id) {
+			if (pindex != nullptr)
+				*pindex = i;
+			
 			return p;
+		}
 	}
 	
 	return nullptr;
@@ -1013,18 +1021,17 @@ App::MediaPlay()
 	
 	if (song == nullptr)
 	{
-		mtl_trace();
 		if (last_play_state_ == GST_STATE_PAUSED) {
-			mtl_trace();
 			player_->Play(nullptr);
 			return;
 		}
-		
 		song = GetFirstSongInVisiblePlaylist();
 		CHECK_PTR_VOID(song);
 		song_index = 0;
 	}
 	
+//	auto ba = song->display_name().toLocal8Bit();
+//	mtl_trace("%s", ba.data());
 	player_->Play(song);
 	
 	if (song_index != -1)
@@ -1182,12 +1189,16 @@ App::PlaySong(const audio::Pick direction)
 void
 App::PlayStop()
 {
-	int index;
-	Song *song = GetCurrentSong(&index);
+	audio::TempSongInfo &tsi = player_->temp_song_info();
+	Song *song = tsi.song;
 	player_->StopPlaying(song);
 	
-	if (song != nullptr)
+	if (song != nullptr) {
+		int index;
+		gui::Playlist *p = GetPlaylistById(tsi.playlist_id, &index);
+		CHECK_PTR_VOID(p);
 		active_table_model()->UpdateRangeDefault(index);
+	}
 	
 	UpdatePlayIcon(GST_STATE_NULL);
 }
@@ -1451,12 +1462,18 @@ App::SavePlaylistSimple(gui::Playlist *playlist)
 }
 
 void
-App::SavePlaylistState(const i32 index)
+App::SavePlaylistState(const i64 id)
 {
-	if (index == -1 || index >= playlists_.size())
-		return;
+	gui::Playlist *playlist = nullptr;
 	
-	gui::Playlist *playlist = playlists_[index];
+	for (auto *p : playlists_) {
+		if (p->id() == id) {
+			playlist = p;
+			break;
+		}
+	}
+	
+	CHECK_PTR_VOID(playlist);
 	Song *song = playlist->GetCurrentSong(nullptr);
 	
 	if (song != nullptr)
@@ -1496,9 +1513,10 @@ App::SetActive(gui::Playlist *playlist, const PlaylistActivationOption option)
 //	auto ba = playlist->name().toLocal8Bit();
 //	mtl_info("set active(%s): %d", ba.data(), int(option));
 	active_playlist_ = playlist;
+	static i64 last_playlist_id_ = -1;
 	
-	if (last_playlist_index_ != -1)
-		SavePlaylistState(last_playlist_index_);
+	if (last_playlist_id_ != -1)
+		SavePlaylistState(last_playlist_id_);
 	
 	seek_pane_->ActivePlaylistChanged(playlist);
 	const int index = GetIndex(playlist);
@@ -1512,7 +1530,7 @@ App::SetActive(gui::Playlist *playlist, const PlaylistActivationOption option)
 			player_->SetSeekAndPause_Start(song, nullptr);
 	}
 	
-	last_playlist_index_ = index;
+	last_playlist_id_ = playlist->id();
 	executing = false;
 }
 

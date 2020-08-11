@@ -30,7 +30,7 @@ SeekPane::ActivePlaylistChanged(gui::Playlist *playlist)
 {
 	CHECK_PTR_VOID(playlist);
 	app_->UpdatePlaylistDuration(playlist);
-	SetCurrentOrUpdate(playlist->GetCurrentSong());
+	//SetCurrentOrUpdate(playlist->GetCurrentSong());
 }
 
 void
@@ -70,7 +70,6 @@ SeekPane::SetCurrentOrUpdate(Song *song)
 		duration = song->meta().duration();
 		position = song->position();
 		slider_->setMaximum(duration / NS_MS_RATIO);
-		SetLabelValue(duration_label_, duration);
 	} else {
 		temp_song_info_ = {};
 		slider_->setMaximum(0);

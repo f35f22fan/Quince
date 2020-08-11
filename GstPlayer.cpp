@@ -100,7 +100,6 @@ GstPlayer::FinishUpPlayFunction(Song *song)
 	
 	app_->seek_pane()->SetCurrentOrUpdate(song);
 	gst_element_set_state(play_elem_, GST_STATE_PLAYING);
-	mtl_trace();
 	app_->UpdatePlayIcon(GST_STATE_PAUSED);
 	app_->last_play_state(GST_STATE_PLAYING);
 }
@@ -125,44 +124,39 @@ GST_STATE_READY – the element is ready to go to PAUSED.
 GST_STATE_PAUSED – the element is PAUSED, it is ready to accept and process data. Sink elements however only accept one buffer and then block.
 GST_STATE_PLAYING – the element is PLAYING, the GstClock is running and the data is flowing. 
 */
-	GstState new_state = GST_STATE_PAUSED;
-	gst_element_set_state(play_elem_, new_state);
+	gst_element_set_state(play_elem_, GST_STATE_PAUSED);
 	
 	if (song != nullptr) {
-		song->state(new_state);
-		app_->seek_pane()->SetCurrentOrUpdate(song);
+		song->state(GST_STATE_PAUSED);
+		//app_->seek_pane()->SetCurrentOrUpdate(song);
 	}
 	
 	app_->UpdatePlayIcon(GST_STATE_PLAYING);
-	app_->last_play_state(new_state);
+	app_->last_play_state(GST_STATE_PAUSED);
 }
 
 void
 GstPlayer::Play(Song *song)
 {
-	if (song != nullptr)
-	{
-		bool is_a_new_song = false;
-		
-		if (temp_song_info_.song != nullptr && song != temp_song_info_.song)
-			is_a_new_song = true;
-		
-		song->FillIn(temp_song_info_);
-		
-		if (is_a_new_song || !song->is_playing_or_paused())
-		{
-			gst_element_set_state(play_elem_, GST_STATE_NULL);
-			auto ba = song->uri().toLocal8Bit();
-			g_object_set(G_OBJECT(play_elem_), "uri", ba.data(), NULL);
-		}
-		
-		if (is_a_new_song) {
-			SetSeekAndPause_Start(song, &GstPlayer::FinishUpPlayFunction);
-			return;
-		}
+	if (song == nullptr) {
+		FinishUpPlayFunction(nullptr);
+		return;
 	}
 	
-	FinishUpPlayFunction(song);
+	const bool is_a_new_song = song != temp_song_info_.song;
+	song->FillIn(temp_song_info_);
+	
+	if (is_a_new_song || !song->is_playing_or_paused())
+	{
+		gst_element_set_state(play_elem_, GST_STATE_NULL);
+		auto ba = song->uri().toLocal8Bit();
+		g_object_set(G_OBJECT(play_elem_), "uri", ba.data(), NULL);
+	}
+	
+	if (is_a_new_song)
+		SetSeekAndPause_Start(song, &GstPlayer::FinishUpPlayFunction);
+	else
+		FinishUpPlayFunction(song);
 }
 
 void
@@ -201,7 +195,6 @@ GstPlayer::SetSeekAndPause_Finish()
 {
 	Song *song = set_seek_and_pause_.song;
 	app_->seek_pane()->SetCurrentOrUpdate(song);
-	mtl_trace();
 	app_->UpdatePlayIcon(GST_STATE_PLAYING);
 	
 	const i64 new_pos = song->position();
