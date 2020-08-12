@@ -91,13 +91,13 @@ foreach(f IN LISTS src_files)
 		COMPILE_DEFINITIONS "SRC_FILE_NAME=\"${b}\"")
 endforeach()
 
-add_library(global_hotkeys_x11 SHARED shared/global_hotkeys.hpp shared/global_hotkeys_x11.cpp)
-add_library(global_hotkeys_wl SHARED shared/global_hotkeys.hpp shared/global_hotkeys_wl.cpp)
+# add_library(global_hotkeys_x11 SHARED shared/global_hotkeys.hpp shared/global_hotkeys_x11.cpp)
+# add_library(global_hotkeys_wl SHARED shared/global_hotkeys.hpp shared/global_hotkeys_wl.cpp)
 
 set(exe_name "app")
 add_executable(${exe_name} ${src_files} resources.qrc)
-target_link_libraries(${exe_name} Qt5::Core Qt5::Gui Qt5::Widgets ${dl_lib}
-    ${GST_LIBRARIES} rt ${GST_CFLAGS} ${FLAC_LIBRARIES} ${FLAC_CFLAGS}
-    ${OPUSFILE_LIBRARIES} ${OPUSFILE_CFLAGS} KF5::GlobalAccel)
+target_link_libraries(${exe_name} Qt5::Core Qt5::Gui Qt5::Widgets
+    ${GST_LIBRARIES} ${GST_CFLAGS} ${FLAC_LIBRARIES} ${FLAC_CFLAGS}
+    ${OPUSFILE_LIBRARIES} ${OPUSFILE_CFLAGS} KF5::GlobalAccel rt)
 # rt for clock_monotonic_raw
 
