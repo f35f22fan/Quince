@@ -57,12 +57,11 @@ reverse(i32 i);
 uchar
 reverse_uchar(uchar b);
 
-//In short, data in ID3v2 tags are stored as
-//"syncsafe integers". This is so the tag info
-//isn't mistaken for audio data, and attempted to
-//be "played". For more info, have fun Googling it.
-i32
-syncsafe(i32 i);
+// In short, data in ID3v2 tags are stored as
+// "syncsafe integers". This is so the tag info
+// isn't mistaken for audio data, and attempted to
+// be "played". For more info, have fun Googling it.
+u32 syncsafe(u32 i);
 
 u32
 syncsafe_nobit_discard(u32 i);

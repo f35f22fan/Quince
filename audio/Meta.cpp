@@ -3,6 +3,7 @@
 #include "../audio.hh"
 
 #include <QDate>
+#include <QDir>
 #include <QRegularExpression>
 
 namespace quince::audio {
@@ -14,17 +15,33 @@ StartsWith4(const char *buf, const char *str)
 		buf[2] == str[2] && buf[3] == str[3];
 }
 
-i32
-Meta::InterpretTagV2Frame(const char *frame_start, const char *full_path)
+void
+SaveBin(const char *data, const i64 len)
 {
-	u32 size;
+	QString full_path = QDir::homePath() + '/' + QString::number(len) + ".bin";
+	auto full_path_ba = full_path.toLocal8Bit();
+	
+	FILE *fp = fopen(full_path_ba.data(),"wb");
+	fwrite(data, len, 1, fp);
+	fflush(fp);
+	fclose(fp);
+}
+
+i32
+Meta::InterpretTagV2Frame(const char *frame_start,
+	const char *full_path, const i64 max)
+{
+	i32 size;
 	memcpy(&size, frame_start + 4, 4);
 	size = quince::audio::syncsafe_nobit_discard(size);
 	
-	if (size <= 0) {
-		//mtl_info("No more frames");
-		return -1; // no more frames
+	if (size > max) {
+//		mtl_trace();
+		return -1;
 	}
+	
+	if (size <= 0)
+		return -1; // no more frames
 	
 	const auto str_buf = frame_start + 11;
 	auto str_len = size - 1;
@@ -45,6 +62,8 @@ Meta::InterpretTagV2Frame(const char *frame_start, const char *full_path)
 		str_len /= 2;
 		s = QString::fromUtf16((const char16_t*)str_buf, str_len);
 	} else {
+//mtl_info("str_buf: %s, str_len: %d", str_buf, str_len);
+//		SaveBin(str_buf, str_len);
 		s = QString::fromLatin1(str_buf, str_len);
 	}
 	
@@ -89,7 +108,6 @@ Meta::InterpretTagV2Frame(const char *frame_start, const char *full_path)
 	
 	return size + 10;
 }
-
 
 void
 Meta::InterpretOpusInfo(OggOpusFile *opus_file)

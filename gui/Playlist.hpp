@@ -36,14 +36,14 @@ public:
 	i64
 	id() const { return id_; }
 	
+	void
+	MouseDoubleClick(QModelIndex index);
+	
 	const QString&
 	name() const { return name_; }
 	
 	void
 	name(const QString &s) { name_ = s; }
-	
-	void
-	PlaylistDoubleClicked(QModelIndex index);
 	
 	static bool
 	QuerySaveFolder(QString &ret_val);

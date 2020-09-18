@@ -40,8 +40,7 @@ Playlist::CreateGui()
 	table_->setColumnWidth(i8(Column::SampleRate), 110);
 	table_->setColumnWidth(i8(Column::Genre), 200);
 	
-	connect(table_, &QTableView::doubleClicked, this,
-		&Playlist::PlaylistDoubleClicked);
+	connect(table_, &QTableView::doubleClicked, this, &Playlist::MouseDoubleClick);
 	
 	QBoxLayout *layout = new QBoxLayout(QBoxLayout::TopToBottom);
 	setLayout(layout);
@@ -134,10 +133,9 @@ Playlist::HasSong(Song *song) const
 }
 
 void
-Playlist::PlaylistDoubleClicked(QModelIndex index)
+Playlist::MouseDoubleClick(QModelIndex index)
 {
 	int row = index.row();
-	
 	auto &songs = table_model_->songs();
 	
 	if (row >= songs.size()) {
@@ -146,13 +144,13 @@ Playlist::PlaylistDoubleClicked(QModelIndex index)
 	}
 	
 	int last_playing = -1;
-	Song *playing = GetCurrentSong(&last_playing);
+	Song *playing_song = GetCurrentSong(&last_playing);
 	
-	if (playing != nullptr) {
-		playing->position(-1);
-		playing->state(GST_STATE_NULL);
+	if (playing_song != nullptr) {
+		playing_song->position(-1);
+		playing_song->state(GST_STATE_NULL);
 	}
-
+	
 	Song *song = songs[row];
 	app_->player()->Play(song);
 	song->position(0);

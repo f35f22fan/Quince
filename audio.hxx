@@ -121,9 +121,10 @@ enum class Genre : i16 {
 	Foreignbard, NuMetal, Electronics, RusRock, ClassicMetal, PopRock,
 	DancePop, PopDisco, EuroDisco, Romantic, BluesRock, PopDance, _90sPop,
 	_90sElectronic, DarkAlternativeMetal, IndustrialRock,
+	DiscoRemix, DreamPop, Eurodance90s,
 	Count
 };
-
+// "eurodance 90,s" "Dream Pop"
 // http://mpgedit.org/mpgedit/mpeg_format/mpeghdr.htm
 // This string array matches exactly the audio::Genre enum.
 static const char *GenreStringArray[] =
@@ -173,7 +174,8 @@ static const char *GenreStringArray[] =
  "Foreignbard", "Nu Metal", "Electronics", "Rus Rock", "Classic Metal",
  "Pop Rock", "Dance Pop", "Pop Disco", "Euro Disco", "Romantic",
  "Blues Rock", "Pop Dance", "90's Pop", "90's Electronic",
- "Dark Alternative Metal", "Industrial Rock"
+ "Dark Alternative Metal", "Industrial Rock", "Disco Remix",
+ "Dream Pop", "Eurodance 90's"
 };
 
 static const char *GenresForInternalUsage[] =
@@ -223,7 +225,7 @@ static const char *GenresForInternalUsage[] =
  "foreignbard", "numetal", "electronics", "rusrock", "classicmetal",
  "poprock", "dancepop", "popdisco", "eurodisco", "romantic", "bluesrock",
  "popdance", "90spop", "90selectronic", "darkalternativemetal",
- "industrialrock"
+ "industrialrock", "discoremix", "dreampop", "eurodance90,s"
 };
 
 }} // quince::audio::

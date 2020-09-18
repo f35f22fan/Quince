@@ -66,7 +66,6 @@ public:
 	void MessageAsyncDone();
 	gui::Playlist* PickPlaylist(const i64 id, int *pindex = nullptr);
 	void PlaylistComboIndexChanged(int index);
-	void PlaylistDoubleClicked(QModelIndex index);
 	GstElement* play_elem() const;
 	GstPlayer* player() const { return player_; }
 	void PlaySong(const audio::Pick direction);

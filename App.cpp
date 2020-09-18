@@ -127,7 +127,9 @@ static void on_discovered_cb (GstDiscoverer *discoverer,
 {
 	const char *uri = gst_discoverer_info_get_uri (info);
 	GstDiscovererResult result = gst_discoverer_info_get_result (info);
-	switch (result) {
+
+	switch (result)
+	{
 	case GST_DISCOVERER_URI_INVALID:
 		g_print ("Invalid URI '%s'\n", uri);
 		break;
@@ -157,7 +159,8 @@ static void on_discovered_cb (GstDiscoverer *discoverer,
 	}
 	
 	if (result != GST_DISCOVERER_OK) {
-		mtl_trace("This URI cannot be played");
+		mtl_trace("This URI cannot be played: %d, uri: \"%s\"",
+			result, uri);
 		return;
 	}
 	
@@ -361,7 +364,7 @@ App::AddBatch(QVector<quince::Song*> &vec)
 		
 		// Add an asynchronous request to process the URI
 		auto uri_ba = song->uri().toLocal8Bit();
-		mtl_info("Adding request for %s", uri_ba.data());
+//		mtl_info("Adding request for %s", uri_ba.data());
 		
 		if (!gst_discoverer_discover_uri_async (user_params_.discoverer, uri_ba)) {
 			mtl_warn("Failed to start discovering URI '%s'\n", uri_ba.data());
@@ -664,7 +667,7 @@ App::CreatePlaylist(const QString &name, const bool set_active,
 	
 	if (ctor == gui::playlist::Ctor::AssignNewId) {
 		playlist->id(GenNewPlaylistId());
-		mtl_info("Assigned new playlist id: %ld", playlist->id());
+//		mtl_info("Assigned new playlist id: %ld", playlist->id());
 	}
 	
 	int n = playlist_stack_->addWidget(playlist);
@@ -913,7 +916,7 @@ App::InitDiscoverer()
 	
 	// Instantiate the Discoverer
 	GError *err = NULL;
-	user_params_.discoverer = gst_discoverer_new (5 * GST_SECOND, &err);
+	user_params_.discoverer = gst_discoverer_new (30 * GST_SECOND, &err);
 	
 	if (!user_params_.discoverer)
 	{

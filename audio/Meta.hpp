@@ -61,7 +61,7 @@ public:
 	InterpretOpusInfo(OggOpusFile *opus_file);
 	
 	i32
-	InterpretTagV2Frame(const char *buf, const char *full_path);
+	InterpretTagV2Frame(const char *buf, const char *full_path, const i64 max);
 	
 private:
 	

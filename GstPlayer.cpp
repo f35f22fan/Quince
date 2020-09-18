@@ -153,10 +153,12 @@ GstPlayer::Play(Song *song)
 		g_object_set(G_OBJECT(play_elem_), "uri", ba.data(), NULL);
 	}
 	
-	if (is_a_new_song)
+	if (is_a_new_song && song->position() != -1) {
+		// must check for position != -1 or next function will do nothing.
 		SetSeekAndPause_Start(song, &GstPlayer::FinishUpPlayFunction);
-	else
+	} else {
 		FinishUpPlayFunction(song);
+	}
 }
 
 void
@@ -175,8 +177,9 @@ GstPlayer::SeekTo(const i64 new_pos)
 void
 GstPlayer::SetSeekAndPause_Start(Song *song, PlayMethod play_method)
 {
-	if (song->position() == -1)
+	if (song->position() == -1) {
 		return;
+	}
 	
 	gst_element_set_state(play_elem_, GST_STATE_NULL);
 	auto ba = song->uri().toLocal8Bit();

@@ -49,6 +49,8 @@ GenresFromString(const QStringRef &genre_name, QVector<Genre> &vec)
 	{
 		static const QRegularExpression regex2 = QRegularExpression("[ \\-\\+\\']");
 		QString s2 = genre_string.toLower().replace(regex2, "").replace('&', 'n');
+//		auto ba = s2.toLocal8Bit();
+//		mtl_info("Genre --- \"%s\"", ba.data());
 		GenresFromStringSubroutine(s2, '/', vec);
 //		mtl_info("subroutine #2: %d", vec.size());
 	}
@@ -234,12 +236,17 @@ ReadID3V2Size(std::ifstream& infile, Meta *meta, const char *full_path)
 	size = syncsafe(size);
 	i32 so_far = 0;
 	
+//	mtl_info("Reading file: \"%s\", tag size: %u", full_path, size);
+	
 	if (meta != nullptr && size > 0) {
 		char tagv2[size];
+		memset(tagv2, 0, size);
+		
 		infile.read(tagv2, sizeof tagv2);
 		
 		while (so_far < size) {
-			i32 sz = meta->InterpretTagV2Frame(tagv2 + so_far, full_path);
+			const i64 remaining = size - so_far;
+			i32 sz = meta->InterpretTagV2Frame(tagv2 + so_far, full_path, remaining);
 			
 			if (sz == -1)
 				break; // no more frames
@@ -309,7 +316,7 @@ ReadMp3FileMeta(const char *full_path, Meta &meta)
 	if (mpeg_version != MpegVersion::_1 ||
 		GetMpegLayer(header) != MpegLayer::_3)
 	{
-		mtl_trace();
+		mtl_trace("Not MPEG_1_3: \"%s\"", full_path);
 		return false;
 	}
 	
@@ -486,10 +493,10 @@ reverse_uchar(uchar b) {
 	return b;
 }
 
-i32
-syncsafe(i32 i)
+u32
+syncsafe(u32 i)
 {
-	i32 ret = 0;
+	u32 ret = 0;
 	ret |= ((i & 0x7F000000) >> 24);
 	ret |= ((i & 0x007F0000) >>  9);
 	ret |= ((i & 0x00007F00) <<  6);
