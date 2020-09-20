@@ -80,17 +80,18 @@ Song::FromFile(const io::File &file, const i64 playlist_id)
 	else
 		return nullptr;
 	
-	auto *p = new Song();
-	p->display_name(file.name);
-	p->playlist_id(playlist_id);
+	auto *song = new Song();
+	song->display_name(file.name);
+	song->playlist_id(playlist_id);
+	song->dir_path(file.dir_path);
 	
-	audio::Meta &meta = p->meta();
+	audio::Meta &meta = song->meta();
 	meta.audio_codec(audio_codec);
 	
 	QString uri_path = QLatin1String("file://") + file.build_full_path();
-	p->uri(QUrl(uri_path).toEncoded());
+	song->uri(QUrl(uri_path).toEncoded());
 	
-	return p;
+	return song;
 }
 
 void

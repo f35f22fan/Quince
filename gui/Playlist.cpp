@@ -29,8 +29,8 @@ void
 Playlist::CreateGui()
 {
 	table_model_ = new gui::TableModel(app_, this);
-	table_ = new gui::Table();
-	table_->setModel(table_model_);
+	table_ = new gui::Table(table_model_);
+	
 	// column widths to be set after setting the model
 	table_->setColumnWidth(i8(Column::Name), 500);
 	table_->setColumnWidth(i8(Column::Duration), 200);

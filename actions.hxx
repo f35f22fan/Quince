@@ -14,4 +14,6 @@ const auto PlaylistRemoveAllEntries = QLatin1String("PlaylistRemoveAllEntries");
 const auto PlaylistRename = QLatin1String("PlaylistRename");
 const auto QuitApp = QLatin1String("QuitApp");
 const auto RemoveSongsFromPlaylist = QLatin1String("RemoveSongsFromPlaylist");
+const auto RemoveSongsAndDeleteFiles = QLatin1String("Remove songs & delete files");
+const auto ShowSongFolderPath = QLatin1String("Show song folder path");
 }

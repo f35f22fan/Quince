@@ -1,20 +1,33 @@
 #pragma once
 
+#include "../decl.hxx"
 #include "decl.hxx"
 #include "../err.hpp"
 
 #include <QAbstractTableModel>
+#include <QMouseEvent>
+#include <QPoint>
 #include <QTableView>
 
 namespace quince::gui {
 
 class Table : public QTableView {
 public:
-	Table();
+	Table(TableModel *tm);
 	virtual ~Table();
+	
+	void
+	ProcessAction(const QString &action);
+	
+protected:
+	virtual void mousePressEvent(QMouseEvent *event) override;
 	
 private:
 	NO_ASSIGN_COPY_MOVE(Table);
+	
+	void RemoveSongsAndDeleteFiles(const QModelIndexList &indices);
+	void ShowRightClickMenu(const QPoint &pos);
+	void ShowSongLocation(Song *song);
 	
 	TableModel *table_model_ = nullptr;
 };
