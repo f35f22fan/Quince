@@ -20,6 +20,11 @@ public:
 	ProcessAction(const QString &action);
 	
 protected:
+	virtual void dragEnterEvent(QDragEnterEvent *event) override;
+	virtual void dragMoveEvent(QDragMoveEvent *event) override;
+	virtual void dropEvent(QDropEvent *event) override;
+	
+	virtual void keyPressEvent(QKeyEvent *event) override;
 	virtual void mousePressEvent(QMouseEvent *event) override;
 	
 private:

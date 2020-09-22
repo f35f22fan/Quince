@@ -401,7 +401,8 @@ App::AddAction(QToolBar *tb, const QString &icon_name,
 }
 
 void
-App::AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist)
+App::AddFilesToPlaylist(QVector<io::File> &files,
+	gui::Playlist *playlist, const QPoint &drop_pos)
 {
 	CHECK_PTR_VOID(playlist);
 	gui::TableModel *model = playlist->table_model();
@@ -413,7 +414,7 @@ App::AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist)
 	{
 		if (file.is_dir()) {
 			QString full_path = file.build_full_path();
-			AddFolderToPlaylist(full_path, playlist);
+			AddFolderToPlaylist(full_path, playlist, drop_pos);
 		} else {
 			auto *song = Song::FromFile(file, playlist->id());
 //			auto song_path = file.build_full_path().toLocal8Bit();
@@ -436,7 +437,8 @@ App::AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist)
 }
 
 void
-App::AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist)
+App::AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist,
+	const QPoint &pos)
 {
 	CHECK_PTR_VOID(playlist);
 	QString dir_path = dp;
@@ -451,7 +453,7 @@ App::AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist)
 		return;
 	}
 	
-	AddFilesToPlaylist(files, playlist);
+	AddFilesToPlaylist(files, playlist, pos);
 }
 
 void
@@ -506,7 +508,7 @@ App::AskAddSongFilesToPlaylist()
 	}
 	
 	if (!files.isEmpty())
-		AddFilesToPlaylist(files, playlist);
+		AddFilesToPlaylist(files, playlist, QPoint(0, 0));
 	
 	seek_pane_->ActivePlaylistChanged(playlist);
 }

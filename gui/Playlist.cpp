@@ -8,8 +8,6 @@
 #include "TableModel.hpp"
 
 #include <QBoxLayout>
-#include <QDragEnterEvent>
-#include <QMimeData>
 
 namespace quince::gui {
 
@@ -17,7 +15,6 @@ Playlist::Playlist(App *app, const QString &name)
 : app_(app), name_(name)
 {
 	CreateGui();
-	setAcceptDrops(true);
 }
 
 Playlist::~Playlist()
@@ -45,47 +42,6 @@ Playlist::CreateGui()
 	QBoxLayout *layout = new QBoxLayout(QBoxLayout::TopToBottom);
 	setLayout(layout);
 	layout->addWidget(table_);
-}
-
-void
-Playlist::dragEnterEvent(QDragEnterEvent *event)
-{
-	const QMimeData *mimedata = event->mimeData();
-	
-	if (mimedata->hasUrls())
-		event->acceptProposedAction();
-}
-
-void
-Playlist::dropEvent(QDropEvent *event)
-{
-	if (event->mimeData()->hasUrls()) {
-		gui::Playlist *playlist = app_->GetComboCurrentPlaylist();
-		
-		if (playlist == nullptr) {
-			mtl_warn("Should never happen");
-			return;
-		} else {
-//			auto ba = playlist->name().toLocal8Bit();
-//			mtl_info("Playlist name: %s", ba.data());
-		}
-		
-		QVector<io::File> files;
-		
-		for (const QUrl &url: event->mimeData()->urls())
-		{
-			QString path = url.path();
-			io::File file;
-			
-			if (io::FileFromPath(file, path) == io::Err::Ok) {
-//				auto ba = file.build_full_path().toLocal8Bit();
-//				mtl_info("Adding file: \"%s\"", ba.data());
-				files.append(file);
-			}
-		}
-		
-		app_->AddFilesToPlaylist(files, playlist);
-	}
 }
 
 Song*

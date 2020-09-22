@@ -64,8 +64,6 @@ public:
 	table_model() const { return table_model_; }
 	
 protected:
-	virtual void dragEnterEvent(QDragEnterEvent *event) override;
-	virtual void dropEvent(QDropEvent *event) override;
 	
 private:
 	NO_ASSIGN_COPY_MOVE(Playlist);

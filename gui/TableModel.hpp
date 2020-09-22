@@ -29,6 +29,9 @@ public:
 	TableModel(App *app, QObject *parent = nullptr);
 	virtual ~TableModel();
 	
+	App*
+	app() const { return app_; }
+	
 	int
 	rowCount(const QModelIndex &parent = QModelIndex()) const override;
 	

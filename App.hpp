@@ -47,7 +47,7 @@ public:
 	QVector<Song*>* active_playlist_songs();
 	gui::TableModel* active_table_model();
 	bool AddBatch(QVector<quince::Song*> &vec);
-	void AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist);
+	void AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist, const QPoint &drop_pos);
 	gui::Playlist* CreatePlaylist(const QString &name, const bool set_active,
 		const PlaylistActivationOption activation_option,
 		int *index, gui::playlist::Ctor ctor);
@@ -90,7 +90,7 @@ private:
 	AddAction(QToolBar *tb, const QString &icon_name,
 		const QString &action_name, const char *tooltip = nullptr);
 	
-	void AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist);
+	void AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist, const QPoint &pos);
 	void AskAddSongFilesToPlaylist();
 	void AskDeletePlaylist();
 	void AskNewPlaylist();

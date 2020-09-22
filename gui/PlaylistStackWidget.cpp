@@ -57,7 +57,7 @@ PlaylistStackWidget::dropEvent(QDropEvent *event)
 			files.append(file);
 		}
 		
-		app_->AddFilesToPlaylist(files, playlist);
+		app_->AddFilesToPlaylist(files, playlist, event->pos());
 	}
 }
 

@@ -1,6 +1,8 @@
 #include "Table.hpp"
 
 #include "../actions.hxx"
+#include "../App.hpp"
+#include "../io/File.hpp"
 #include "../Song.hpp"
 #include "TableModel.hpp"
 
@@ -10,12 +12,14 @@
 #include <QAction>
 #include <QClipboard>
 #include <QDialog>
+#include <QDragEnterEvent>
 #include <QFormLayout>
 #include <QGuiApplication>
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMessageBox>
+#include <QMimeData>
 #include <QPushButton>
 #include <QUrl>
 
@@ -28,9 +32,61 @@ table_model_(tm)
 	setSelectionBehavior(QAbstractItemView::SelectRows);
 	horizontalHeader()->setSectionsMovable(true);
 	verticalHeader()->setSectionsMovable(true);
+	setAcceptDrops(true);
 }
 
 Table::~Table() {}
+
+void
+Table::dragEnterEvent(QDragEnterEvent *event)
+{
+	const QMimeData *mimedata = event->mimeData();
+	
+	if (mimedata->hasUrls())
+		event->acceptProposedAction();
+}
+
+void
+Table::dragMoveEvent(QDragMoveEvent *event)
+{
+	const auto &pos = event->pos();
+	mtl_info("x: %d, y: %d", pos.x(), pos.y());
+}
+
+void
+Table::dropEvent(QDropEvent *event)
+{
+	App *app = table_model_->app();
+	
+	if (event->mimeData()->hasUrls()) {
+		gui::Playlist *playlist = app->GetComboCurrentPlaylist();
+		CHECK_PTR_VOID(playlist);
+		QVector<io::File> files;
+		
+		for (const QUrl &url: event->mimeData()->urls())
+		{
+			QString path = url.path();
+			io::File file;
+			
+			if (io::FileFromPath(file, path) == io::Err::Ok) {
+//				auto ba = file.build_full_path().toLocal8Bit();
+//				mtl_info("Adding file: \"%s\"", ba.data());
+				files.append(file);
+			}
+		}
+		
+		app->AddFilesToPlaylist(files, playlist, event->pos());
+	}
+}
+void
+Table::keyPressEvent(QKeyEvent *event)
+{
+	const int key = event->key();
+	
+	if (key == Qt::Key_Delete) {
+		table_model_->app()->RemoveSongsFromPlaylist(Which::Selected);
+	}
+}
 
 void
 Table::mousePressEvent(QMouseEvent *event)
