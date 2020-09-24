@@ -26,6 +26,7 @@
 #include <QListView>
 #include <QMessageBox>
 #include <QScrollArea>
+#include <QShortcut>
 #include <QStandardPaths>
 #include <QToolBar>
 #include <QTreeView>
@@ -288,6 +289,7 @@ app_icon_(":/resources/Quince.png")
 	connect(tray_icon_, &QSystemTrayIcon::activated, this,
 		&App::TrayActivated);
 	
+	RegisterWindowShortcuts();
 	RegisterGlobalShortcuts();
 	resize(1400, 600);
 }
@@ -401,59 +403,74 @@ App::AddAction(QToolBar *tb, const QString &icon_name,
 }
 
 void
-App::AddFilesToPlaylist(QVector<io::File> &files,
-	gui::Playlist *playlist, const QPoint &drop_pos)
+App::AddFolderTo(const io::File &dir, QVector<io::File> &only_files, const int level,
+	const int max_levels)
 {
-	CHECK_PTR_VOID(playlist);
-	gui::TableModel *model = playlist->table_model();
-	QVector<Song*> &songs = model->songs();
-	i32 first = songs.size();
-	QVector<Song*> songs_to_add;
-	
-	for (io::File &file: files)
-	{
-		if (file.is_dir()) {
-			QString full_path = file.build_full_path();
-			AddFolderToPlaylist(full_path, playlist, drop_pos);
-		} else {
-			auto *song = Song::FromFile(file, playlist->id());
-//			auto song_path = file.build_full_path().toLocal8Bit();
-			
-			if (song != nullptr) {
-				songs_to_add.append(song);
-			} else {
-//				mtl_info("Song is null: \"%s\"", song_path.data());
-			}
-		}
-	}
-	
-	if (songs_to_add.isEmpty())
+	if (level >= max_levels)
 		return;
 	
-	AddBatch(songs_to_add);
-	model->InsertRows(songs.size(), songs_to_add);
+	QVector<io::File> subfiles;
+	QString dir_path = dir.build_full_path();
 	
-	SavePlaylistSimple(playlist);
-}
-
-void
-App::AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist,
-	const QPoint &pos)
-{
-	CHECK_PTR_VOID(playlist);
-	QString dir_path = dp;
-	
-	if (!dir_path.endsWith('/'))
-		dir_path.append('/');
-	QVector<io::File> files;
-	
-	if (io::ListFiles(dir_path, files, 0, io::IsSongExtension) != io::Err::Ok) {
+	if (io::ListFiles(dir_path, subfiles, 0, io::IsSongExtension) != io::Err::Ok) {
 		auto ba = dir_path.toLocal8Bit();
 		mtl_trace("dir path: %s", ba.data());
 		return;
 	}
 	
-	AddFilesToPlaylist(files, playlist, pos);
+	for (io::File &file: subfiles) {
+		if (file.is_regular())
+			only_files.append(file);
+	}
+	
+	for (io::File &file: subfiles)
+	{
+		if (file.is_dir()) {
+			AddFolderTo(file, only_files, level + 1, max_levels);
+		}
+	}
+}
+
+void
+App::AddFilesToPlaylist(QVector<io::File> &files,
+	gui::Playlist *playlist, const i32 at_vec_index)
+{
+//	mtl_info("Insert at %d", at_vec_index);
+	CHECK_PTR_VOID(playlist);
+	gui::TableModel *model = playlist->table_model();
+	QVector<Song*> songs_to_add;
+	QVector<io::File> only_files;
+	
+	for (io::File &file: files)
+	{
+		if (file.is_regular())
+			only_files.append(file);
+	}
+	
+	for (io::File &file: files)
+	{
+		if (file.is_dir()) {
+			AddFolderTo(file, only_files, 0, 3);
+		}
+	}
+	
+	for (io::File &file: only_files)
+	{
+		auto *song = Song::FromFile(file, playlist->id());
+		
+		if (song != nullptr) {
+			songs_to_add.append(song);
+		} else {
+			// mtl_warn("Song is null: \"%s\"", song_path.data());
+		}
+	}
+	
+	if (!songs_to_add.isEmpty())
+	{
+		AddBatch(songs_to_add);
+		model->InsertRows(at_vec_index, songs_to_add);
+		SavePlaylistSimple(playlist);
+	}
 }
 
 void
@@ -508,7 +525,7 @@ App::AskAddSongFilesToPlaylist()
 	}
 	
 	if (!files.isEmpty())
-		AddFilesToPlaylist(files, playlist, QPoint(0, 0));
+		AddFilesToPlaylist(files, playlist, 0);
 	
 	seek_pane_->ActivePlaylistChanged(playlist);
 }
@@ -1400,6 +1417,24 @@ App::RegisterGlobalShortcuts()
 }
 
 void
+App::RegisterWindowShortcuts()
+{
+	auto *shortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_A), this);
+	shortcut->setContext(Qt::ApplicationShortcut);
+	
+	connect(shortcut, &QShortcut::activated, [=] {
+		SelectAllSongsInVisiblePlaylist();
+	});
+	
+	shortcut = new QShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q), this);
+	shortcut->setContext(Qt::ApplicationShortcut);
+	
+	connect(shortcut, &QShortcut::activated, [=] {
+		QApplication::quit();
+	});
+}
+
+void
 App::RemoveSongsFromPlaylist(const Which which)
 {
 	gui::Playlist *playlist = GetComboCurrentPlaylist(nullptr);
@@ -1503,6 +1538,15 @@ App::SavePlaylistsToDisk()
 	}
 	
 	return ok;
+}
+
+void
+App::SelectAllSongsInVisiblePlaylist()
+{
+	auto *playlist = GetVisiblePlaylist();
+	CHECK_PTR_VOID(playlist);
+	playlist->table()->selectAll();
+	playlist->table()->setFocus();
 }
 
 void

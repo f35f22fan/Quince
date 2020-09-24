@@ -20,7 +20,9 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QPainter>
 #include <QPushButton>
+#include <QScrollBar>
 #include <QUrl>
 
 namespace quince::gui {
@@ -32,7 +34,24 @@ table_model_(tm)
 	setSelectionBehavior(QAbstractItemView::SelectRows);
 	horizontalHeader()->setSectionsMovable(true);
 	verticalHeader()->setSectionsMovable(true);
+	setDragEnabled(true);
 	setAcceptDrops(true);
+	setDefaultDropAction(Qt::MoveAction);
+	setUpdatesEnabled(true);
+//	setDragDropOverwriteMode(false);
+//	setSelectionMode(QAbstractItemView::ExtendedSelection);
+//	setDropIndicatorShown(true);
+	
+	setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+	
+	auto *vscroll = verticalScrollBar();
+	//vscroll->setPageStep(1);
+	//vscroll->setSingleStep(5);
+//	setAutoScroll(false);
+//	connect(vscroll, &QAbstractSlider::valueChanged, [=] (int i) {
+//		printf("Slider value: %d, position: %d\n", i,
+//			verticalScrollBar()->sliderPosition());
+//	});
 }
 
 Table::~Table() {}
@@ -47,10 +66,32 @@ Table::dragEnterEvent(QDragEnterEvent *event)
 }
 
 void
+Table::dragLeaveEvent(QDragLeaveEvent *event)
+{
+	drop_y_coord_ = -1;
+	update();
+}
+
+void
 Table::dragMoveEvent(QDragMoveEvent *event)
 {
 	const auto &pos = event->pos();
-	mtl_info("x: %d, y: %d", pos.x(), pos.y());
+	QScrollBar *vscroll = verticalScrollBar();
+	drop_y_coord_ = pos.y() + vscroll->sliderPosition();
+	
+	// repaint() or update() don't work because
+	// the window is not raised when dragging a song
+	// on top of the playlist and the repaint
+	// requests are ignored.
+	// repaint(0, y - h / 2, width(), y + h / 2);
+	// using a hack:
+	int row = rowAt(pos.y());
+	
+	if (row != -1)
+		table_model_->UpdateRangeDefault(row);
+	else {
+		mtl_info("row: %d, drop_y_coord: %d", row, drop_y_coord_);
+	}
 }
 
 void
@@ -75,8 +116,26 @@ Table::dropEvent(QDropEvent *event)
 			}
 		}
 		
-		app->AddFilesToPlaylist(files, playlist, event->pos());
+		int index = 0;
+		const int row_h = rowHeight(0);
+		
+		if (row_h > 0 && drop_y_coord_ > 0)
+		{
+			int rem = drop_y_coord_ % row_h;
+			
+			if (rem < row_h / 2)
+				drop_y_coord_ -= rem;
+			else
+				drop_y_coord_ += row_h - rem;
+			
+			index = drop_y_coord_ / row_h;
+		}
+		
+		if (index != -1)
+			app->AddFilesToPlaylist(files, playlist, index);
 	}
+	
+	drop_y_coord_ = -1;
 }
 void
 Table::keyPressEvent(QKeyEvent *event)
@@ -97,6 +156,45 @@ Table::mousePressEvent(QMouseEvent *event)
 		ShowRightClickMenu(event->globalPos());
 	}
 	
+}
+
+void
+Table::paintEvent(QPaintEvent *event)
+{
+//	static int cc = 0;
+//	printf("%d \n", cc++);
+	QTableView::paintEvent(event);
+	
+	if (drop_y_coord_ == -1)
+		return;
+	
+	const i32 row_h = rowHeight(0);
+	
+	if (row_h < 1)
+		return;
+	
+	QPainter painter(viewport());
+	QPen pen(QColor(0, 0, 255));
+	pen.setWidthF(2.0);
+	painter.setPen(pen);
+	
+	const i32 slider_pos = verticalScrollBar()->sliderPosition();
+	int y = drop_y_coord_;// - slider_pos;
+	
+	int rem = y % row_h;
+	
+	if (rem < row_h / 2)
+		y -= rem;
+	else
+		y += row_h - rem;
+	
+	y -= slider_pos;
+	
+	if (y > 0)
+		y -= 1;
+	
+	//mtl_info("y: %d, slider: %d", y, slider_pos);
+	painter.drawLine(0, y, width(), y);
 }
 
 void

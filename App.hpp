@@ -47,7 +47,7 @@ public:
 	QVector<Song*>* active_playlist_songs();
 	gui::TableModel* active_table_model();
 	bool AddBatch(QVector<quince::Song*> &vec);
-	void AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist, const QPoint &drop_pos);
+	void AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist, const i32 at_vec_index);
 	gui::Playlist* CreatePlaylist(const QString &name, const bool set_active,
 		const PlaylistActivationOption activation_option,
 		int *index, gui::playlist::Ctor ctor);
@@ -90,7 +90,8 @@ private:
 	AddAction(QToolBar *tb, const QString &icon_name,
 		const QString &action_name, const char *tooltip = nullptr);
 	
-	void AddFolderToPlaylist(const QString &dp, gui::Playlist *playlist, const QPoint &pos);
+	void AddFolderTo(const io::File &dir, QVector<io::File> &only_files,
+		const int level, const int max_levels);
 	void AskAddSongFilesToPlaylist();
 	void AskDeletePlaylist();
 	void AskNewPlaylist();
@@ -113,9 +114,11 @@ private:
 		const QKeySequence &key_sequence, QIcon *icon = nullptr);
 	
 	void RegisterGlobalShortcuts();
+	void RegisterWindowShortcuts();
 	bool SavePlaylist(gui::Playlist *playlist, const QString &dir_path, const bool is_active);
 	bool SavePlaylistSimple(gui::Playlist *playlist);
 	void SavePlaylistState(const i64 id);
+	void SelectAllSongsInVisiblePlaylist();
 	
 	NO_ASSIGN_COPY_MOVE(App);
 	

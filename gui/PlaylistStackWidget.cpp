@@ -2,6 +2,8 @@
 
 #include "../App.hpp"
 #include "../io/File.hpp"
+#include "Playlist.hpp"
+#include "Table.hpp"
 
 #include <QDragEnterEvent>
 #include <QMimeData>
@@ -30,35 +32,20 @@ PlaylistStackWidget::dragEnterEvent(QDragEnterEvent *event)
 void
 PlaylistStackWidget::dropEvent(QDropEvent *event)
 {
-	if (event->mimeData()->hasUrls()) {
+	gui::Playlist *playlist = app_->GetComboCurrentPlaylist();
+	
+	if (playlist == nullptr) {
+		auto *new_one = app_->CreatePlaylist(QLatin1String("New Playlist"), true,
+			PlaylistActivationOption::None, nullptr,
+			playlist::Ctor::AssignNewId);
 		
-		gui::Playlist *playlist = app_->GetComboCurrentPlaylist();
-		
-		if (playlist == nullptr) {
-			auto *new_one = app_->CreatePlaylist(QLatin1String("New Playlist"), true,
-				PlaylistActivationOption::None, nullptr,
-				playlist::Ctor::AssignNewId);
-			
-			CHECK_PTR_VOID(new_one);
-			playlist = app_->active_playlist();
-			CHECK_PTR_VOID(playlist);
-		}
-		
-		QVector<io::File> files;
-		
-		for (const QUrl &url: event->mimeData()->urls())
-		{
-			QString path = url.path();
-			io::File file;
-			
-			if (io::FileFromPath(file, path) != io::Err::Ok)
-				continue;
-			
-			files.append(file);
-		}
-		
-		app_->AddFilesToPlaylist(files, playlist, event->pos());
+		CHECK_PTR_VOID(new_one);
+		playlist = app_->active_playlist();
+		CHECK_PTR_VOID(playlist);
 	}
+		
+	gui::Table *table = playlist->table();
+	table->dropEvent(event);
 }
 
 }
