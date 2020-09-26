@@ -25,6 +25,7 @@
 #include <QLibrary>
 #include <QListView>
 #include <QMessageBox>
+#include <QMenu>
 #include <QScrollArea>
 #include <QShortcut>
 #include <QStandardPaths>
@@ -278,17 +279,7 @@ app_icon_(":/resources/Quince.png")
 	CHECK_TRUE_VOID(CreateGui());
 	LoadPlaylists();
 	setWindowIcon(app_icon_);
-	
-	if (!QSystemTrayIcon::isSystemTrayAvailable())
-		mtl_info("System tray not available.");
-	
-	QIcon tray_icon(":/resources/Quince48.png");
-	
-	tray_icon_ = new QSystemTrayIcon(tray_icon, this);
-	tray_icon_->setVisible(true);
-	connect(tray_icon_, &QSystemTrayIcon::activated, this,
-		&App::TrayActivated);
-	
+	InitTrayIcon();
 	RegisterWindowShortcuts();
 	RegisterGlobalShortcuts();
 	resize(1400, 600);
@@ -949,6 +940,50 @@ App::InitDiscoverer()
 	g_signal_connect (user_params_.discoverer, "finished", G_CALLBACK (on_finished_cb), &user_params_);
 	
 	return true;
+}
+
+void
+App::InitTrayIcon()
+{
+	if (!QSystemTrayIcon::isSystemTrayAvailable())
+		mtl_info("System tray not available.");
+	
+	QIcon tray_icon(":/resources/Quince48.png");
+	sys_tray_icon_ = new QSystemTrayIcon(tray_icon, this);
+	sys_tray_icon_->setVisible(true);
+	connect(sys_tray_icon_, &QSystemTrayIcon::activated, this,
+		&App::TrayActivated);
+	
+	QMenu *menu = new QMenu(this);
+	sys_tray_icon_->setContextMenu(menu);
+	
+	{
+		auto action_str = quince::actions::MediaPlayPause;
+		QAction *action = menu->addAction(QIcon::fromTheme(ICON_NAME_PLAY), action_str);
+		action->setText("Play/pause");
+		connect(action, &QAction::triggered, [=] {ProcessAction(action_str);});
+	}
+	{
+		auto action_str = quince::actions::MediaPlayNext;
+		QAction *action = menu->addAction(QIcon::fromTheme("go-next"), action_str);
+		action->setText("Next track");
+		connect(action, &QAction::triggered, [=] {ProcessAction(action_str);});
+	}
+	{
+		auto action_str = quince::actions::MediaPlayPrev;
+		QAction *action = menu->addAction(QIcon::fromTheme("go-previous"), action_str);
+		action->setText("Previous track");
+		connect(action, &QAction::triggered, [=] {ProcessAction(action_str);});
+	}
+	{
+		auto action_str = quince::actions::QuitApp;
+		QAction *action = menu->addAction(QIcon::fromTheme("application-exit"), action_str);
+		action->setText("Quit");
+		connect(action, &QAction::triggered, [=] {
+			QApplication::quit();
+		});
+	}
+	
 }
 
 void

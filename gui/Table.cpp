@@ -43,15 +43,6 @@ table_model_(tm)
 //	setDropIndicatorShown(true);
 	
 	setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
-	
-	auto *vscroll = verticalScrollBar();
-	//vscroll->setPageStep(1);
-	//vscroll->setSingleStep(5);
-//	setAutoScroll(false);
-//	connect(vscroll, &QAbstractSlider::valueChanged, [=] (int i) {
-//		printf("Slider value: %d, position: %d\n", i,
-//			verticalScrollBar()->sliderPosition());
-//	});
 }
 
 Table::~Table() {}

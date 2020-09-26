@@ -103,6 +103,7 @@ private:
 	bool DeletePlaylist(gui::Playlist *p, int index);
 	i64 GenNewPlaylistId() const;
 	gui::Playlist* GetPlaylistById(const i64 playlist_id, int *pindex = nullptr) const;
+	void InitTrayIcon();
 	bool SongAndPlaylistMatch(const audio::TempSongInfo &tsi) const;
 	void LoadPlaylist(const QString &full_path);
 	void LoadPlaylists();
@@ -133,7 +134,7 @@ private:
 	gui::PlaylistStackWidget *playlist_stack_widget_ = nullptr;
 	QStackedLayout *playlist_stack_ = nullptr;
 	QIcon app_icon_;
-	QSystemTrayIcon *tray_icon_ = nullptr;
+	QSystemTrayIcon *sys_tray_icon_ = nullptr;
 	GstState last_play_state_ = GST_STATE_NULL;
 	QLabel *playlist_duration_ = nullptr;
 	
