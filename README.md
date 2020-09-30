@@ -31,10 +31,6 @@ Now cd to the Quince source code and build it:
 - run the app: ./quince
 ```
 
-#### Dependencies list:
-cmake qt5-default libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libflac++-dev
-libopusfile-dev libkf5globalaccel-dev libglib2.0-dev
- 
 #### Supported Desktops:
  - [x] KDE Plasma 5
  - [ ] Gnome 3

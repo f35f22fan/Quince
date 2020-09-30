@@ -80,9 +80,9 @@ Table::dragMoveEvent(QDragMoveEvent *event)
 	
 	if (row != -1)
 		table_model_->UpdateRangeDefault(row);
-	else {
-		mtl_info("row: %d, drop_y_coord: %d", row, drop_y_coord_);
-	}
+//	else {
+//		mtl_info("row: %d, drop_y_coord: %d", row, drop_y_coord_);
+//	}
 }
 
 void

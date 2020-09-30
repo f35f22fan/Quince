@@ -547,9 +547,16 @@ App::AskNewPlaylist()
 		"New Playlist", QLatin1String("Name:"),
 		QLineEdit::Normal, "New Playlist", &ok);
 	
-	if (ok && !text.isEmpty())
+	if (ok && !text.isEmpty()) {
+		QString error_msg;
+		
 		CreatePlaylist(text, true, PlaylistActivationOption::None,
-			nullptr, gui::playlist::Ctor::AssignNewId);
+			nullptr, gui::playlist::Ctor::AssignNewId, &error_msg);
+		
+		if (!error_msg.isEmpty()) {
+			QMessageBox::warning(this, "Failed", error_msg);
+		}
+	}
 }
 
 void
@@ -662,13 +669,14 @@ App::CreateMediaActionsToolBar()
 gui::Playlist*
 App::CreatePlaylist(const QString &name, const bool set_active,
 	const PlaylistActivationOption activation_option, int *index,
-	gui::playlist::Ctor ctor)
+	gui::playlist::Ctor ctor, QString *error_msg)
 {
 	for (gui::Playlist *p: playlists_)
 	{
 		if (p->name() == name) {
-			auto ba = p->name().toLocal8Bit();
-			mtl_trace("Same playlist name: \"%s\"", ba.data());
+			if (error_msg != nullptr)
+				*error_msg = "A playlist with this name already exists";
+			
 			return nullptr;
 		}
 	}
@@ -1170,6 +1178,11 @@ App::PickSong(QVector<Song*> *vec, const int current_song_index,
 				return 0;
 			return -1;
 		} else if (current_song_index == vec->size() -1) {
+			auto *last_song = (*vec)[current_song_index];
+			last_song->position(-1);
+			last_song->state(GST_STATE_NULL);
+			active_table_model()->UpdateRangeDefault(current_song_index);
+			
 			if (play_mode_ == audio::PlayMode::RepeatPlaylist) {
 				if (GetFirstSongInCurrentPlaylist() != nullptr)
 					return 0;
@@ -1218,29 +1231,30 @@ App::PlaylistComboIndexChanged(int index)
 		SetActive(playlists_[index], PlaylistActivationOption::None);
 }
 
-void
+Song*
 App::PlaySong(const audio::Pick direction)
 {
 	auto *vec = active_playlist_songs();
 	
 	if (vec == nullptr)
-		return;
+		return nullptr;
 	
 	int current_song_index;
 	GetCurrentSong(&current_song_index);
 	int song_index = PickSong(vec, current_song_index, direction);
 	
-	if (song_index == -1)
-		return;
-	
-	if (song_index >= vec->size()) {
-		mtl_trace();
-		return;
+	if (song_index == -1) {
+		song_index = 0;
 	}
+	
+	if (song_index >= vec->size())
+		return nullptr;
 	
 	Song *playing_song = (*vec)[song_index];
 	player_->Play(playing_song);
 	active_table_model()->UpdateRangeDefault(song_index);
+	
+	return playing_song;
 }
 
 void
@@ -1324,36 +1338,29 @@ App::ReachedEndOfStream()
 	auto *vec = active_playlist_songs();
 	
 	if (vec == nullptr)
-	{
-		mtl_trace();
 		return;
-	}
 	
-	int last_playing = -1;
+	Song *found_song = nullptr;
+	int song_index = -1;
 	
 	for (int i = 0; i < vec->size(); i++)
 	{
 		auto *song = (*vec)[i];
 		
 		if (song->is_playing()) {
-			song->position(-1);
-			last_playing = i;
+			found_song = song;
+			song_index = i;
 			break;
 		}
 	}
 	
-	if (last_playing == -1 || play_mode_ == audio::PlayMode::StopAtTrackEnd)
-		return;
+	auto *next_song = PlaySong(audio::Pick::Next);
 	
-	active_table_model()->UpdateRangeDefault(last_playing);
-	
-	if (play_mode_ == audio::PlayMode::RepeatPlaylist ||
-		play_mode_ == audio::PlayMode::StopAtPlaylistEnd) {
-		PlaySong(audio::Pick::Next);
-	} else if (play_mode_ == audio::PlayMode::RepeatTrack) {
-		auto *song = (*vec)[last_playing];
-		player_->Play(song);
-		active_table_model()->UpdateRangeDefault(last_playing);
+	if (found_song != nullptr && found_song != next_song)
+	{
+		found_song->position(-1);
+		found_song->state(GST_STATE_NULL);
+		active_table_model()->UpdateRangeDefault(song_index);
 	}
 }
 

@@ -50,7 +50,7 @@ public:
 	void AddFilesToPlaylist(QVector<io::File> &files, gui::Playlist *playlist, const i32 at_vec_index);
 	gui::Playlist* CreatePlaylist(const QString &name, const bool set_active,
 		const PlaylistActivationOption activation_option,
-		int *index, gui::playlist::Ctor ctor);
+		int *index, gui::playlist::Ctor ctor, QString *error_msg = nullptr);
 	gui::Playlist* GetComboCurrentPlaylist(int *pindex = nullptr);
 	Song* GetCurrentSong(int *index = nullptr);
 	Song* GetFirstSongInCurrentPlaylist();
@@ -68,7 +68,7 @@ public:
 	void PlaylistComboIndexChanged(int index);
 	GstElement* play_elem() const;
 	GstPlayer* player() const { return player_; }
-	void PlaySong(const audio::Pick direction);
+	Song *PlaySong(const audio::Pick direction);
 	void PlayStop();
 	static bool QueryAppConfigPath(QString &path);
 	void ReachedEndOfStream();
