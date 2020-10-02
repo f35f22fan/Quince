@@ -60,10 +60,18 @@ SeekPane::IsActive(Song *song)
 }
 
 void
-SeekPane::SetCurrentOrUpdate(Song *song)
+SeekPane::SetCurrentOrUpdate(const quince::audio::PlaylistSong pair)
 {
+	Playlist *playlist = app_->PickPlaylist(pair.playlist_id);
+	CHECK_PTR_VOID(playlist);
+	Song *song = pair.song;
+	
+	if (!playlist->has(pair.song))
+		song = nullptr;
+	
 	i64 duration = -1;
 	i64 position = -1;
+	
 	if (song != nullptr)
 	{
 		song->FillIn(temp_song_info_);

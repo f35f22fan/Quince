@@ -28,7 +28,7 @@ public:
 	GetFullPath(QString &full_path) const;
 	
 	bool
-	HasSong(Song *song) const;
+	has(Song *song) const;
 	
 	void
 	id(const i64 n) { id_ = n; }

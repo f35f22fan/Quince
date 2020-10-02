@@ -3,6 +3,7 @@
 #include <QLabel>
 #include <QSlider>
 
+#include "../audio.hxx"
 #include "../audio/TempSongInfo.hpp"
 #include "decl.hxx"
 #include "../decl.hxx"
@@ -18,7 +19,7 @@ public:
 	
 	void ActivePlaylistChanged(gui::Playlist *playlist);
 	bool IsActive(Song *song);
-	void SetCurrentOrUpdate(Song *song);
+	void SetCurrentOrUpdate(const quince::audio::PlaylistSong playlist_song);
 	bool slider_dragged_by_user() const { return slider_dragged_by_user_; }
 	void SliderValueChanged(int value);
 	void UpdatePosition(const i64 new_pos);

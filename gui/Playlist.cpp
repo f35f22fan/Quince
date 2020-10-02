@@ -77,7 +77,7 @@ Playlist::GetFullPath(QString &full_path) const
 }
 
 bool
-Playlist::HasSong(Song *song) const
+Playlist::has(Song *song) const
 {
 	for (Song *p: songs())
 	{

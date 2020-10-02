@@ -80,14 +80,12 @@ Table::dragMoveEvent(QDragMoveEvent *event)
 	
 	if (row != -1)
 		table_model_->UpdateRangeDefault(row);
-//	else {
-//		mtl_info("row: %d, drop_y_coord: %d", row, drop_y_coord_);
-//	}
 }
 
 void
 Table::dropEvent(QDropEvent *event)
 {
+	drop_y_coord_ = -1;
 	App *app = table_model_->app();
 	
 	if (event->mimeData()->hasUrls()) {
@@ -100,33 +98,29 @@ Table::dropEvent(QDropEvent *event)
 			QString path = url.path();
 			io::File file;
 			
-			if (io::FileFromPath(file, path) == io::Err::Ok) {
-//				auto ba = file.build_full_path().toLocal8Bit();
-//				mtl_info("Adding file: \"%s\"", ba.data());
+			if (io::FileFromPath(file, path) == io::Err::Ok)
 				files.append(file);
-			}
 		}
 		
 		int index = 0;
 		const int row_h = rowHeight(0);
+		int drop_at_y = event->pos().y() + verticalScrollBar()->sliderPosition();;
 		
-		if (row_h > 0 && drop_y_coord_ > 0)
+		if (row_h > 0 && drop_at_y > 0)
 		{
-			int rem = drop_y_coord_ % row_h;
+			int rem = drop_at_y % row_h;
 			
 			if (rem < row_h / 2)
-				drop_y_coord_ -= rem;
+				drop_at_y -= rem;
 			else
-				drop_y_coord_ += row_h - rem;
+				drop_at_y += row_h - rem;
 			
-			index = drop_y_coord_ / row_h;
+			index = drop_at_y / row_h;
 		}
 		
 		if (index != -1)
 			app->AddFilesToPlaylist(files, playlist, index);
 	}
-	
-	drop_y_coord_ = -1;
 }
 void
 Table::keyPressEvent(QKeyEvent *event)

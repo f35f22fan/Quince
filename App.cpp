@@ -205,6 +205,11 @@ static void on_discovered_cb (GstDiscoverer *discoverer,
 	// then update the Song and the GUI.
 	auto item = user_params->pending.find(user_params->discoverer);
 	
+	auto *table_model = user_params->app->active_table_model();
+	CHECK_PTR_VOID(table_model);
+	quince::gui::Playlist *playlist = user_params->app->active_playlist();
+	CHECK_PTR_VOID(playlist);
+	
 	if (item != user_params->pending.end()) {
 		std::vector<quince::Song*> &vec = item->second;
 		
@@ -213,13 +218,13 @@ static void on_discovered_cb (GstDiscoverer *discoverer,
 			
 			if (song->uri() == uri) {
 				song->Apply(audio_info);
-				auto *table_model = user_params->app->active_table_model();
-				CHECK_PTR_VOID(table_model);
 				table_model->UpdateRangeDefault(i);
 				quince::gui::SeekPane *seek_pane = user_params->app->seek_pane();
 				
-				if (seek_pane->IsActive(song))
-					seek_pane->SetCurrentOrUpdate(song);
+				if (seek_pane->IsActive(song)) {
+					quince::audio::PlaylistSong pair = {playlist->id(), song};
+					seek_pane->SetCurrentOrUpdate(pair);
+				}
 			}
 		}
 	}
@@ -424,7 +429,7 @@ App::AddFolderTo(const io::File &dir, QVector<io::File> &only_files, const int l
 
 void
 App::AddFilesToPlaylist(QVector<io::File> &files,
-	gui::Playlist *playlist, const i32 at_vec_index)
+	gui::Playlist *playlist, i32 at_vec_index)
 {
 //	mtl_info("Insert at %d", at_vec_index);
 	CHECK_PTR_VOID(playlist);
@@ -458,9 +463,15 @@ App::AddFilesToPlaylist(QVector<io::File> &files,
 	
 	if (!songs_to_add.isEmpty())
 	{
+		QVector<Song*> &songs = playlist->songs();
+		
+		if (at_vec_index >= songs.size())
+			at_vec_index = songs.size();
+		
 		AddBatch(songs_to_add);
 		model->InsertRows(at_vec_index, songs_to_add);
 		SavePlaylistSimple(playlist);
+		UpdatePlaylistDuration(playlist);
 	}
 }
 
@@ -886,7 +897,7 @@ App::SongAndPlaylistMatch(const audio::TempSongInfo &tsi) const
 	if (playlist == nullptr)
 		return false;
 	
-	return playlist->HasSong(tsi.song);
+	return playlist->has(tsi.song);
 }
 
 gui::Playlist*
@@ -1114,38 +1125,7 @@ App::MediaPlayPause()
 
 void
 App::MessageAsyncDone()
-{
-//	int row_index;
-//	Song *song = GetCurrentSong(&row_index);
-//	CHECK_PTR_VOID(song);
-//	GstState state;
-//	GstStateChangeReturn ret = gst_element_get_state (play_elem(),
-//		&state, NULL, GST_CLOCK_TIME_NONE);
-	
-//	if (ret != GST_STATE_CHANGE_SUCCESS) {
-//		mtl_trace();
-//		return;
-//	}
-	
-//	//mtl_info("State is: %s", audio::StateToString(state));
-	
-//	if (!song->meta().is_duration_set())
-//	{
-//		i64 duration = -1;
-//		gboolean ok = gst_element_query_duration (play_elem(),
-//			GST_FORMAT_TIME, &duration);
-//		CHECK_TRUE_VOID(ok);
-//		song->meta().duration(duration);
-//		mtl_info("DURATION IS: %ld", duration);
-		
-//		auto *table_model = active_table_model();
-//		CHECK_PTR_VOID(table_model);
-//		table_model->UpdateRangeDefault(row_index);
-		
-//		if (seek_pane_->current_song() == song)
-//			seek_pane_->SetCurrentOrUpdateSong(song);
-//	}
-}
+{}
 
 gui::Playlist*
 App::PickPlaylist(const i64 id, int *pindex)
@@ -1262,7 +1242,8 @@ App::PlayStop()
 {
 	audio::TempSongInfo &tsi = player_->temp_song_info();
 	Song *song = tsi.song;
-	player_->StopPlaying(song);
+	quince::audio::PlaylistSong pair = {tsi.playlist_id, tsi.song};
+	player_->StopPlaying(pair);
 	
 	if (song != nullptr) {
 		int index;

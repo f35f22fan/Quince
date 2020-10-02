@@ -2,6 +2,7 @@
 
 #include "App.hpp"
 #include "Song.hpp"
+#include "gui/Playlist.hpp"
 #include "gui/SeekPane.hpp"
 
 #include <QUrl>
@@ -35,6 +36,7 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 	case GST_MESSAGE_ASYNC_DONE: {
 		GstPlayer *player = app->player();
 		auto &ssp = player->set_seek_and_pause_;
+		
 		if (ssp.pending) {
 			ssp.pending = false;
 			player->SetSeekAndPause_Finish();
@@ -42,7 +44,7 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 			ssp.pending2 = false;
 			app->UpdatePlayingSongPosition(ssp.new_pos);
 		} else {
-			app->MessageAsyncDone();
+//			app->MessageAsyncDone();
 		}
 		break;
 	};
@@ -98,7 +100,8 @@ GstPlayer::FinishUpPlayFunction(Song *song)
 	if (song != nullptr)
 		song->state(GST_STATE_PLAYING);
 	
-	app_->seek_pane()->SetCurrentOrUpdate(song);
+	auto pair = quince::audio::PlaylistSong {app_->active_playlist()->id(), song};
+	app_->seek_pane()->SetCurrentOrUpdate(pair);
 	gst_element_set_state(play_elem_, GST_STATE_PLAYING);
 	app_->UpdatePlayIcon(GST_STATE_PAUSED);
 	app_->last_play_state(GST_STATE_PLAYING);
@@ -197,7 +200,8 @@ void
 GstPlayer::SetSeekAndPause_Finish()
 {
 	Song *song = set_seek_and_pause_.song;
-	app_->seek_pane()->SetCurrentOrUpdate(song);
+	auto pair = quince::audio::PlaylistSong {app_->active_playlist()->id(), song};
+	app_->seek_pane()->SetCurrentOrUpdate(pair);
 	app_->UpdatePlayIcon(GST_STATE_PLAYING);
 	
 	const i64 new_pos = song->position();
@@ -212,8 +216,15 @@ GstPlayer::SetSeekAndPause_Finish()
 }
 
 void
-GstPlayer::StopPlaying(Song *song)
+GstPlayer::StopPlaying(const quince::audio::PlaylistSong &pair)
 {
+	gui::Playlist *playlist = app_->PickPlaylist(pair.playlist_id);
+	CHECK_PTR_VOID(playlist);
+	Song *song = pair.song;
+	
+	if (!playlist->has(pair.song))
+		song = nullptr;
+	
 	gst_element_set_state(play_elem_, GST_STATE_NULL);
 	
 	if (song != nullptr) {
@@ -221,7 +232,7 @@ GstPlayer::StopPlaying(Song *song)
 		song->state(GST_STATE_NULL);
 	}
 	
-	app_->seek_pane()->SetCurrentOrUpdate(song);
+	app_->seek_pane()->SetCurrentOrUpdate(pair);
 }
 
 }

@@ -27,12 +27,13 @@ public:
 	void SeekTo(const i64 new_pos);
 	void SetSeekAndPause_Start(Song *song, PlayMethod play_method);
 	void SetSeekAndPause_Finish();
-	void StopPlaying(Song *song);
+	void StopPlaying(const audio::PlaylistSong &pair);
 	audio::TempSongInfo& temp_song_info() { return temp_song_info_; }
 	
 	struct set_seek_and_pause {
 		bool pending = false;
 		bool pending2 = false;
+		i64 playlist_id = -1;
 		Song *song = nullptr;
 		i64 new_pos = -1;
 		PlayMethod play_method = nullptr;

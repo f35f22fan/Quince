@@ -10,6 +10,11 @@ class Song;
 
 namespace audio {
 
+struct PlaylistSong {
+	i64 playlist_id;
+	Song *song;
+};
+
 struct Info {
 	quince::Song *song = nullptr;
 	u64 duration;
