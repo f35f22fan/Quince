@@ -20,8 +20,7 @@ A foobar2000-like audio player for the Linux desktop written in C++/Qt5.
 #### How to build:
 Install dependencies from Terminal:
 ```
-sudo apt-get install cmake qt5-default libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libflac++-dev
-libopusfile-dev libkf5globalaccel-dev libglib2.0-dev
+sudo apt-get install cmake qt5-default libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libflac++-dev libopusfile-dev libkf5globalaccel-dev libglib2.0-dev g++ git
 ```
 Now cd to the Quince source code and build it:
 ```

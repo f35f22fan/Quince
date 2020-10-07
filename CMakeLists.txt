@@ -8,17 +8,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Don't use clang because:
 # https://stackoverflow.com/questions/56317596/glm-fails-to-build-when-using-clion
-set(CMAKE_C_COMPILER "/usr/bin/clang-10")
-set(CMAKE_CXX_COMPILER "/usr/bin/clang++-10")
 
- SET (CMAKE_C_COMPILER             "/usr/bin/clang")
+# SET (CMAKE_C_COMPILER             "/usr/bin/clang")
 # SET (CMAKE_C_FLAGS                "-Wall -std=c99")
 # SET (CMAKE_C_FLAGS_DEBUG          "-g")
 # SET (CMAKE_C_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
 # SET (CMAKE_C_FLAGS_RELEASE        "-O4 -DNDEBUG")
 # SET (CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g")
 
- SET (CMAKE_CXX_COMPILER             "/usr/bin/clang++")
+# SET (CMAKE_CXX_COMPILER             "/usr/bin/clang++")
 # SET (CMAKE_CXX_FLAGS                "-Wall")
 # SET (CMAKE_CXX_FLAGS_DEBUG          "-g")
 # SET (CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
