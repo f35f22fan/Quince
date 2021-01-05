@@ -77,6 +77,8 @@ Song::FromFile(const io::File &file, const i64 playlist_id)
 		audio_codec = audio::Codec::Flac;
 	else if (lower == QLatin1String("opus"))
 		audio_codec = audio::Codec::OggOpus;
+	else if (lower == QLatin1String("mka"))
+		audio_codec = audio::Codec::Mka;
 	else
 		return nullptr;
 	

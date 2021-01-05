@@ -26,7 +26,7 @@ enum class Column : i8 {
 class TableModel: public QAbstractTableModel {
 	Q_OBJECT
 public:
-	TableModel(App *app, QObject *parent = nullptr);
+	TableModel(App *app, Playlist *parent);
 	virtual ~TableModel();
 	
 	App*
@@ -68,6 +68,8 @@ public:
 	QVector<Song*>&
 	songs() { return songs_; }
 	
+	void StartOrStopTimer();
+	
 	void
 	UpdateRange(int row1, Column c1, int row2, Column c2);
 	
@@ -87,6 +89,7 @@ private:
 	void TimerHit();
 	bool UpdatePlayingSongPosition();
 	
+	Playlist *playlist_ = nullptr;
 	App *app_ = nullptr;
 	QVector<Song*> songs_;
 	QTimer *timer_ = nullptr;

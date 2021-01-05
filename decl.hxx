@@ -14,4 +14,11 @@ enum class PlaylistActivationOption: u8 {
 	RestoreStreamPosition,
 };
 
+enum class Desktop : u8 {
+	None,
+	KDE,
+	Gnome,
+	Other
+};
+
 }

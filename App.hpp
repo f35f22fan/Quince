@@ -51,14 +51,29 @@ public:
 	gui::Playlist* CreatePlaylist(const QString &name, const bool set_active,
 		const PlaylistActivationOption activation_option,
 		int *index, gui::playlist::Ctor ctor, QString *error_msg = nullptr);
+	Desktop
+	desktop() const { return desktop_; }
+	
+	bool
+	desktop_gnome() const { return desktop_ == Desktop::Gnome; }
+	
+	bool
+	desktop_kde() const { return desktop_ == Desktop::KDE; }
+	
+	void DetectDesktop();
+	
 	gui::Playlist* GetComboCurrentPlaylist(int *pindex = nullptr);
 	Song* GetCurrentSong(int *index = nullptr);
 	Song* GetFirstSongInCurrentPlaylist();
 	Song* GetFirstSongInVisiblePlaylist();
 	int GetIndex(gui::Playlist *playlist) const;
-	gui::Playlist* GetVisiblePlaylist();
+	gui::Playlist* GetVisiblePlaylist(int *ret_index = nullptr);
 	Song* GetVisiblePlaylistCurrentSong(int *pindex);
 	bool InitDiscoverer();
+	
+	bool visible() const { return must_be_visible_; }
+	void visible(const bool flag) { must_be_visible_ = flag; }
+	
 	void last_play_state(GstState s) { last_play_state_ = s; }
 	void MediaPause();
 	void MediaPlay();
@@ -76,11 +91,11 @@ public:
 	bool SavePlaylistsToDisk();
 	void SetActive(gui::Playlist *playlist, const PlaylistActivationOption option);
 	gui::SeekPane* seek_pane() const { return seek_pane_; }
-	void TrayActivated(QSystemTrayIcon::ActivationReason reason);
+	void TrayActivated();
 	void UpdatePlayIcon(const GstState new_state);
 	void UpdatePlaylistDuration(gui::Playlist *playlist);
-	void UpdatePlayingSongPosition(const i64 pos_is_known);
-	
+	void UpdatePlayingSongPosition(const i64 new_pos, const bool update_gui);
+	void UpdatePlaylistsVisibility(const int index);
 protected:
 	void closeEvent(QCloseEvent *event);
 	
@@ -105,7 +120,7 @@ private:
 	gui::Playlist* GetPlaylistById(const i64 playlist_id, int *pindex = nullptr) const;
 	void InitTrayIcon();
 	bool SongAndPlaylistMatch(const audio::TempSongInfo &tsi) const;
-	void LoadPlaylist(const QString &full_path);
+	bool LoadPlaylist(const QString &full_path);
 	void LoadPlaylists();
 	int PickSong(QVector<Song*> *vec, const int current_song_index,
 		const audio::Pick pick);
@@ -147,6 +162,10 @@ private:
 		.friendly = "Quince Player",
 		.program_name = "QuinceProgramName"
 	};
+	
+	quince::Desktop desktop_ = quince::Desktop::None;
+	
+	bool must_be_visible_ = true;
 };
 
 }

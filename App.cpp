@@ -26,6 +26,7 @@
 #include <QListView>
 #include <QMessageBox>
 #include <QMenu>
+#include <QProcessEnvironment>
 #include <QScrollArea>
 #include <QShortcut>
 #include <QStandardPaths>
@@ -277,6 +278,7 @@ namespace quince {
 App::App(int argc, char *argv[]) :
 app_icon_(":/resources/Quince.png")
 {
+	DetectDesktop();
 	setObjectName(quince_context_.unique);
 	play_mode_ = audio::PlayMode::StopAtPlaylistEnd;
 	player_ = new GstPlayer(this, argc, argv);
@@ -351,8 +353,8 @@ App::AddBatch(QVector<quince::Song*> &vec)
 		audio::Meta &meta = song->meta();
 		audio::ReadFileMeta(full_path, meta);
 		
-		if (song->meta().is_duration_set())
-			continue;
+//		if (song->meta().is_duration_set())
+//			continue;
 		
 		if (!started) {
 			// Start the discoverer process (nothing to do yet)
@@ -671,8 +673,8 @@ App::CreateMediaActionsToolBar()
 	auto *label = new QLabel("   ");
 	tb->addWidget(label);
 	tb->addSeparator();
-	w = AddAction(tb, "application-exit", actions::QuitApp);
-	w->setToolTip("Quit Application");
+	w = AddAction(tb, "multimedia-player", actions::ShowHideWindow);
+	w->setToolTip("Hide player window");
 	
 	return tb;
 }
@@ -792,6 +794,20 @@ App::DeletePlaylist(gui::Playlist *p, int index)
 	return true;
 }
 
+void
+App::DetectDesktop()
+{
+	auto env = QProcessEnvironment::systemEnvironment();
+	QString val = env.value(QLatin1String("XDG_CURRENT_DESKTOP"), QLatin1String());
+	val = val.toLower();
+	
+	if (val == QLatin1String("kde")) { // "KDE"
+		desktop_ = Desktop::KDE;
+	} else if (val.indexOf(QLatin1String("gnome")) != -1) { // "ubuntu:GNOME"
+		desktop_ = Desktop::Gnome;
+	}
+}
+
 i64
 App::GenNewPlaylistId() const
 {
@@ -901,12 +917,15 @@ App::SongAndPlaylistMatch(const audio::TempSongInfo &tsi) const
 }
 
 gui::Playlist*
-App::GetVisiblePlaylist()
+App::GetVisiblePlaylist(int *ret_index)
 {
 	int index = playlists_cb_->currentIndex();
 	
 	if (index == -1 || index >= playlists_.size())
 		return nullptr;
+	
+	if (ret_index != nullptr)
+		*ret_index = index;
 	
 	return playlists_[index];
 }
@@ -970,11 +989,24 @@ App::InitTrayIcon()
 	QIcon tray_icon(":/resources/Quince48.png");
 	sys_tray_icon_ = new QSystemTrayIcon(tray_icon, this);
 	sys_tray_icon_->setVisible(true);
-	connect(sys_tray_icon_, &QSystemTrayIcon::activated, this,
-		&App::TrayActivated);
+	
+	if (desktop_kde()) {
+		// tray activated is triggered on right-click in KDE, which
+		// is fine, but in Gnome only on double-click which should
+		// be skipped because it's confusing as hell
+		connect(sys_tray_icon_, &QSystemTrayIcon::activated, this,
+			&App::TrayActivated);
+	}
 	
 	QMenu *menu = new QMenu(this);
 	sys_tray_icon_->setContextMenu(menu);
+	
+	{
+		auto action_str = quince::actions::ShowHideWindow;
+		QAction *action = menu->addAction(QIcon::fromTheme("multimedia-player"), action_str);
+		action->setText("Show/Hide");
+		connect(action, &QAction::triggered, [=] {ProcessAction(action_str);});
+	}
 	
 	{
 		auto action_str = quince::actions::MediaPlayPause;
@@ -1005,7 +1037,7 @@ App::InitTrayIcon()
 	
 }
 
-void
+bool
 App::LoadPlaylist(const QString &full_path)
 {
 	ByteArray ba;
@@ -1014,7 +1046,7 @@ App::LoadPlaylist(const QString &full_path)
 	{
 		auto path = full_path.toLocal8Bit();
 		mtl_trace("Couldn't read file: %s", path.data());
-		return;
+		return false;
 	}
 	
 	i32 cache_version = ba.next_i32();
@@ -1024,7 +1056,7 @@ App::LoadPlaylist(const QString &full_path)
 //		auto ba = full_path.toLocal8Bit();
 //		mtl_info("Playlist cache version %d not supported, need %d, file:\n%s",
 //			cache_version, quince::PlaylistCacheVersion, ba.data());
-		return;
+		return false;
 	}
 	
 	i64 id = ba.next_i64();
@@ -1033,7 +1065,7 @@ App::LoadPlaylist(const QString &full_path)
 	auto *playlist = CreatePlaylist(playlist_name, false,
 		PlaylistActivationOption::None, nullptr,
 		gui::playlist::Ctor::None);
-	CHECK_PTR_VOID(playlist);
+	CHECK_PTR(playlist);
 	playlist->id(id);
 	auto &songs = playlist->songs();
 	const i32 song_count = ba.next_i32();
@@ -1052,6 +1084,8 @@ App::LoadPlaylist(const QString &full_path)
 	
 	if (is_active)
 		SetActive(playlist, PlaylistActivationOption::RestoreStreamPosition);
+	
+	return true;
 }
 
 void
@@ -1068,8 +1102,13 @@ App::LoadPlaylists()
 	if (io::ListFileNames(dir_path, names) != io::Err::Ok)
 		return;
 	
-	for (const QString &filename: names)
+	for (const QString &filename: names) {
 		LoadPlaylist(dir_path + filename);
+	}
+	
+	int visible_playlist_index = -1;
+	GetVisiblePlaylist(&visible_playlist_index);
+	UpdatePlaylistsVisibility(visible_playlist_index);
 	
 	{ // this fixes gui/playback glitches
 		// not sure if it's still the case
@@ -1207,8 +1246,11 @@ App::play_elem() const { return player_->play_elem(); }
 void
 App::PlaylistComboIndexChanged(int index)
 {
-	if (index != -1 && index < playlists_.size())
+	if (index != -1 && index < playlists_.size()) {
 		SetActive(playlists_[index], PlaylistActivationOption::None);
+	}
+	
+	UpdatePlaylistsVisibility(index);
 }
 
 Song*
@@ -1284,6 +1326,8 @@ App::ProcessAction(const QString &action_name)
 		AskDeletePlaylist();
 	} else if (action_name == actions::PlaylistRemoveAllEntries) {
 		RemoveSongsFromPlaylist(Which::All);
+	} else if (action_name == actions::ShowHideWindow) {
+		TrayActivated();
 	} else {
 		auto ba = action_name.toLocal8Bit();
 		mtl_trace("Action skipped: \"%s\"", ba.data());
@@ -1607,21 +1651,23 @@ App::SetActive(gui::Playlist *playlist, const PlaylistActivationOption option)
 }
 
 void
-App::TrayActivated(QSystemTrayIcon::ActivationReason reason)
+App::TrayActivated() //QSystemTrayIcon::ActivationReason reason)
 {
 	// not using do_show = !isVisible() because it returns true even
 	// when the window is not visible.
-	static bool do_show = false;
-	//mtl_info("do_show: %s", do_show ? "true" : "false");
-	setVisible(do_show);
+	visible(!visible());
 	
-	if (do_show)
+	setVisible(visible());
+	
+	int visible_playlist_index = -1;
+	GetVisiblePlaylist(&visible_playlist_index);
+	UpdatePlaylistsVisibility(visible_playlist_index);
+	
+	if (visible())
 	{
 		activateWindow();
 		raise();
 	}
-	
-	do_show = !do_show;
 }
 
 void
@@ -1639,15 +1685,16 @@ App::UpdatePlayIcon(const GstState new_state)
 }
 
 void
-App::UpdatePlayingSongPosition(const i64 pos_is_known)
+App::UpdatePlayingSongPosition(const i64 new_pos, const bool update_gui)
 {
 	audio::TempSongInfo &tsi = player_->temp_song_info();
 	
 	if (!tsi.has_data())
 		return;
 	
-	if (pos_is_known != -1) {
-		tsi.position = pos_is_known;
+	const bool pos_is_known = new_pos != -1;
+	if (pos_is_known) {
+		tsi.position = new_pos;
 	} else if (!gst_element_query_position (play_elem(), GST_FORMAT_TIME,
 		&tsi.position))
 	{
@@ -1656,7 +1703,9 @@ App::UpdatePlayingSongPosition(const i64 pos_is_known)
 	
 	if (SongAndPlaylistMatch(tsi)) {
 		tsi.song->position(tsi.position);
-		seek_pane_->UpdatePosition(tsi.position);
+		
+		if (update_gui)
+			seek_pane_->UpdatePosition(tsi.position);
 	}
 }
 
@@ -1685,6 +1734,18 @@ App::UpdatePlaylistDuration(gui::Playlist *playlist)
 	.append(d.toDurationString())
 	.append(']');
 	playlist_duration_->setText(s);
+}
+
+void
+App::UpdatePlaylistsVisibility(const int index) {
+	for (int i = 0; i < playlists_.size(); i++) {
+		if (i != index)
+			playlists_[i]->visible(false);
+	}
+	
+	if (index != -1 && index < playlists_.size()) {
+		playlists_[index]->visible(true);
+	}
 }
 
 } // quince::

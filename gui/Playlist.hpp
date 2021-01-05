@@ -63,6 +63,9 @@ public:
 	TableModel*
 	table_model() const { return table_model_; }
 	
+	bool visible() const { return must_be_visible_; }
+	void visible(const bool flag);
+	
 protected:
 	
 private:
@@ -74,6 +77,6 @@ private:
 	Table *table_ = nullptr;
 	i64 id_ = -1;
 	PlaylistActivationOption activation_option_ = PlaylistActivationOption::None;
-	
+	bool must_be_visible_ = false;
 };
 }

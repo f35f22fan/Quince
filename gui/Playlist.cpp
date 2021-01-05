@@ -192,4 +192,12 @@ Playlist::RemoveSelectedSongs()
 QVector<Song*>&
 Playlist::songs() const { return table_model_->songs(); }
 
+void
+Playlist::visible(const bool flag)
+{
+	must_be_visible_ = flag;
+	
+	table_model_->StartOrStopTimer();
+}
+
 }

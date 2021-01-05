@@ -4,8 +4,10 @@
 #include "../audio.hh"
 #include "../audio/Meta.hpp"
 #include "../Duration.hpp"
+#include "Playlist.hpp"
 #include "../Song.hpp"
 #include "SeekPane.hpp"
+#include "Table.hpp"
 
 #include <QFont>
 #include <QTime>
@@ -13,9 +15,10 @@
 
 namespace quince::gui {
 
-TableModel::TableModel(App *app, QObject *parent) :
+TableModel::TableModel(App *app, Playlist *parent) :
 app_(app),
-QAbstractTableModel(parent)
+QAbstractTableModel(parent),
+playlist_(parent)
 {
 	timer_ = new QTimer(this);
 	timer_->setInterval(1000);
@@ -25,6 +28,9 @@ QAbstractTableModel(parent)
 
 TableModel::~TableModel()
 {
+	delete timer_;
+	timer_ = nullptr;
+	
 	for (auto *song: songs_)
 		delete song;
 	
@@ -216,15 +222,34 @@ TableModel::removeRows(int row, int count, const QModelIndex &parent)
 }
 
 void
+TableModel::StartOrStopTimer()
+{
+	if (playlist_->visible()) {
+		TimerHit();
+		timer_->start();
+	} else {
+		timer_->stop();
+	}
+}
+
+void
 TableModel::TimerHit()
 {
+	const bool is_visible = playlist_->table()->isVisible();
+	app_->UpdatePlayingSongPosition(-1, is_visible);
+	
+	if (!is_visible)
+		return;
+
 	if (app_->seek_pane()->slider_dragged_by_user())
 		return;
 	
 	if (playing_row_ >= songs_.size())
 		return;
+
+//	static int n = 0;
+//	mtl_info("%d", n++);
 	
-	app_->UpdatePlayingSongPosition(-1);
 	UpdateRange(playing_row_, Column::Duration, playing_row_, Column::Duration);
 }
 

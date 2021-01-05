@@ -42,7 +42,7 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 			player->SetSeekAndPause_Finish();
 		} else if (ssp.pending2) {
 			ssp.pending2 = false;
-			app->UpdatePlayingSongPosition(ssp.new_pos);
+			app->UpdatePlayingSongPosition(ssp.new_pos, true);
 		} else {
 //			app->MessageAsyncDone();
 		}
@@ -173,7 +173,7 @@ GstPlayer::SeekTo(const i64 new_pos)
 		GstSeekFlags(flag), new_pos))
 	{
 		if (!set_seek_and_pause_.pending2)
-			app_->UpdatePlayingSongPosition(new_pos);
+			app_->UpdatePlayingSongPosition(new_pos, true);
 	}
 }
 

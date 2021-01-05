@@ -78,6 +78,7 @@ enum class Codec : u8 {
 	Mp3,
 	OggOpus,
 	Flac,
+	Mka
 };
 
 enum class Genre : i16 {
